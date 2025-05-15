@@ -21,7 +21,7 @@ import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Plus, Search, MoreHorizontal, Eye, Loader2, FileDown, Trash2, Edit, Save, X, MinusCircle } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
-import { api, Venda as SupabaseVenda, ItemVenda, StatusPagamento, StatusVenda, Produto } from "@/lib/supabase";
+import { api, Venda as SupabaseVenda, ItemVenda, StatusPagamento, StatusVenda, Produto, supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import * as XLSX from 'xlsx';
@@ -63,6 +63,11 @@ const Vendas = () => {
   const [senhaOferta, setSenhaOferta] = useState("");
   const [alterandoStatusPagamento, setAlterandoStatusPagamento] = useState(false);
   const [novoStatusPagamentoPendente, setNovoStatusPagamentoPendente] = useState<StatusPagamento | null>(null);
+  
+  // Função para calcular o total dos itens de uma venda
+  const calcularTotalItens = (itens: ItemVenda[]): number => {
+    return itens.reduce((total, item) => total + item.subtotal, 0);
+  };
   const navigate = useNavigate();
   const { toast } = useToast();
   
@@ -323,15 +328,43 @@ const Vendas = () => {
     try {
       setAlterandoStatusPagamento(true);
       
-      // Se for "Ofertado", definir o total como 0
-      const novoTotal = novoStatus === "Ofertado" ? 0 : selectedVenda.total;
+      // Obter os dados atuais da venda para garantir que temos as informações mais recentes
+      const { data: vendaAtual, error: erroConsulta } = await supabase
+        .from('vendas')
+        .select('*')
+        .eq('id', selectedVenda.id)
+        .single();
       
-      // Atualizar o status de pagamento e o total (se necessário) no banco de dados
-      await api.vendas.atualizar(selectedVenda.id, {
-        status_pagamento: novoStatus,
-        ...(novoStatus === "Ofertado" && { total: 0 })
-      });
-
+      if (erroConsulta) throw erroConsulta;
+      
+      let dadosAtualizacao: any = {
+        status_pagamento: novoStatus
+      };
+      
+      // Caso 1: Mudando para "Ofertado" - salvar valor original e zerar total
+      if (novoStatus === "Ofertado") {
+        dadosAtualizacao.valor_original = vendaAtual.total;
+        dadosAtualizacao.total = 0;
+      }
+      // Caso 2: Saindo de "Ofertado" - restaurar valor original
+      else if (selectedVenda.status_pagamento === "Ofertado" && vendaAtual.valor_original !== null) {
+        dadosAtualizacao.total = vendaAtual.valor_original;
+        // Limpar o campo valor_original
+        dadosAtualizacao.valor_original = null;
+      }
+      
+      // Atualizar o status de pagamento e o total no banco de dados
+      await api.vendas.atualizar(selectedVenda.id, dadosAtualizacao);
+      
+      // Calcular o novo total baseado na mudança de status
+      let novoTotal = selectedVenda.total;
+      if (novoStatus === "Ofertado") {
+        novoTotal = 0;
+      } else if (selectedVenda.status_pagamento === "Ofertado") {
+        // Restaurar o valor original se estiver saindo do status "Ofertado"
+        novoTotal = vendaAtual.valor_original || calcularTotalItens(itensVenda);
+      }
+      
       // Atualizar o estado local
       setSelectedVenda(prev => {
         if (prev) {
@@ -340,7 +373,7 @@ const Vendas = () => {
             ...prev, 
             status_pagamento: novoStatus, 
             status: novoStatusVenda,
-            ...(novoStatus === "Ofertado" && { total: 0 })
+            total: novoTotal
           };
         }
         return prev;
@@ -354,7 +387,7 @@ const Vendas = () => {
             ...v, 
             status_pagamento: novoStatus, 
             status: novoStatusVenda,
-            ...(novoStatus === "Ofertado" && { total: 0 })
+            total: novoTotal
           };
         }
         return v;

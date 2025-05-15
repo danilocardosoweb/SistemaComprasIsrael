@@ -54,6 +54,7 @@ export type Venda = {
   cliente_nome: string;
   telefone?: string;
   total: number;
+  valor_original?: number;
   forma_pagamento: string;
   status_pagamento: StatusPagamento;
   status: StatusVenda;
