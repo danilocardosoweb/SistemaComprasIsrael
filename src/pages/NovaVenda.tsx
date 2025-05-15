@@ -9,7 +9,7 @@ import { Trash2, Plus, FileUp, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { api, Produto, ItemVenda as SupabaseItemVenda, Cliente, StatusPagamento, GERACOES } from "@/lib/supabase";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { format } from "date-fns";
 
 // Tipo ItemVenda para uso interno
@@ -30,6 +30,10 @@ const NovaVenda = () => {
   const [quantidade, setQuantidade] = useState<number>(1);
   const [formaPagamento, setFormaPagamento] = useState<string>("pix");
   const [statusPagamento, setStatusPagamento] = useState<StatusPagamento>("Pendente");
+  const [showSenhaDialog, setShowSenhaDialog] = useState(false);
+  const [senha, setSenha] = useState("");
+  const [senhaErro, setSenhaErro] = useState("");
+  const [statusTemporario, setStatusTemporario] = useState<StatusPagamento | null>(null);
   const [comprovante, setComprovante] = useState<File | null>(null);
   const [comprovantePreview, setComprovantePreview] = useState<string>("");
   const [loading, setLoading] = useState(true);
@@ -179,20 +183,31 @@ const NovaVenda = () => {
         subtotal: item.produto.preco * item.quantidade
       }));
       
+      // Preparar os dados da venda
+      const totalVenda = calcularTotal();
+      const vendaData: any = {
+        data_venda: format(new Date(), 'yyyy-MM-dd'),
+        cliente_id: null,
+        cliente_nome: cliente,
+        telefone: telefone,
+        total: statusPagamento === 'Ofertado' ? 0 : totalVenda,
+        forma_pagamento: formaPagamento,
+        status_pagamento: statusPagamento,
+        status: statusPagamento === 'Feito (pago)' ? 'Finalizada' : statusPagamento === 'Cancelado' ? 'Cancelada' : 'Pendente'
+      };
+      
+      // Temporariamente comentado até que a coluna valor_original seja adicionada ao banco de dados
+      // if (statusPagamento === 'Ofertado') {
+      //   vendaData.valor_original = totalVenda;
+      // }
+      
       // Criar venda com os itens
-      const { data: novaVenda } = await api.vendas.criar(
-        {
-          data_venda: format(new Date(), 'yyyy-MM-dd'),
-          cliente_id: null,
-          cliente_nome: cliente,
-          telefone: telefone,
-          total: calcularTotal(),
-          forma_pagamento: formaPagamento,
-          status_pagamento: statusPagamento,
-          status: statusPagamento === 'Feito (pago)' ? 'Finalizada' : statusPagamento === 'Cancelado' ? 'Cancelada' : 'Pendente'
-        },
+      const resultado = await api.vendas.criar(
+        vendaData,
         itensParaAPI
       );
+      
+      const novaVenda = resultado.data;
       
       if (!novaVenda) {
         toast({
@@ -227,6 +242,30 @@ const NovaVenda = () => {
     setComprovantePreview("");
   };
 
+  // Função para lidar com a mudança de status de pagamento
+  const handleStatusPagamentoChange = (value: StatusPagamento) => {
+    if (value === 'Ofertado') {
+      setStatusTemporario(value);
+      setShowSenhaDialog(true);
+    } else {
+      setStatusPagamento(value);
+    }
+  };
+
+  // Função para verificar a senha e aplicar o status "Ofertado"
+  const handleConfirmarSenha = () => {
+    const senhaCorreta = "@Master12";
+    
+    if (senha === senhaCorreta) {
+      setStatusPagamento(statusTemporario as StatusPagamento);
+      setShowSenhaDialog(false);
+      setSenha("");
+      setSenhaErro("");
+    } else {
+      setSenhaErro("Senha incorreta. Tente novamente.");
+    }
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div>
@@ -257,14 +296,30 @@ const NovaVenda = () => {
                 </div>
               </div>
 
-              <div className="grid gap-2">
-                <Label htmlFor="telefone">Telefone</Label>
-                <Input 
-                  id="telefone" 
-                  value={telefone}
-                  onChange={(e) => setTelefone(e.target.value)}
-                  placeholder="(00) 00000-0000"
-                />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="telefone">Telefone</Label>
+                  <Input 
+                    id="telefone" 
+                    value={telefone}
+                    onChange={(e) => setTelefone(e.target.value)}
+                    placeholder="(00) 00000-0000"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="geracao">Geração</Label>
+                  <Select value={geracao} onValueChange={setGeracao}>
+                    <SelectTrigger id="geracao">
+                      <SelectValue placeholder="Selecione a geração" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="nenhuma">Nenhuma</SelectItem>
+                      {GERACOES.map((g) => (
+                        <SelectItem key={g} value={g}>{g}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </div>
           </CardContent>
@@ -367,7 +422,7 @@ const NovaVenda = () => {
 
                 <div className="grid gap-2">
                   <Label htmlFor="statusPagamento">Status do Pagamento</Label>
-                  <Select value={statusPagamento} onValueChange={(value: StatusPagamento) => setStatusPagamento(value)}>
+                  <Select value={statusPagamento} onValueChange={handleStatusPagamentoChange}>
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione o status do pagamento" />
                     </SelectTrigger>
@@ -375,6 +430,7 @@ const NovaVenda = () => {
                       <SelectItem value="Pendente">Pendente</SelectItem>
                       <SelectItem value="Feito (pago)">Feito (pago)</SelectItem>
                       <SelectItem value="Cancelado">Cancelado</SelectItem>
+                      <SelectItem value="Ofertado">Ofertado</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -520,6 +576,56 @@ const NovaVenda = () => {
               ) : (
                 'Cadastrar'
               )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de Senha para Status Ofertado */}
+      <Dialog open={showSenhaDialog} onOpenChange={(open) => {
+        if (!open) {
+          setShowSenhaDialog(false);
+          setSenha("");
+          setSenhaErro("");
+        }
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Autenticação Necessária</DialogTitle>
+            <DialogDescription>
+              Para alterar o status para "Ofertado", é necessário inserir a senha de autorização.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="senha">Senha</Label>
+              <Input
+                id="senha"
+                type="password"
+                value={senha}
+                onChange={(e) => setSenha(e.target.value)}
+                placeholder="Digite a senha"
+              />
+              {senhaErro && (
+                <p className="text-sm text-destructive">{senhaErro}</p>
+              )}
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowSenhaDialog(false);
+                setSenha("");
+                setSenhaErro("");
+              }}
+            >
+              Cancelar
+            </Button>
+            <Button onClick={handleConfirmarSenha}>
+              Confirmar
             </Button>
           </DialogFooter>
         </DialogContent>
