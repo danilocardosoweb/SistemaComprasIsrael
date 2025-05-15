@@ -251,6 +251,9 @@ const Vendas = () => {
         })
       );
       
+      // Buscar todos os produtos para a aba de inventário
+      const todosProdutos = await api.produtos.listar();
+      
       // Preparar dados para o Excel - Planilha de Vendas
       const dadosVendas = vendasCompletas.map(venda => {
         // Criar uma lista formatada dos produtos da venda
@@ -267,9 +270,9 @@ const Vendas = () => {
           'Status': venda.status,
           'Status Pagamento': venda.status_pagamento,
           'Forma Pagamento': venda.forma_pagamento === 'pix' ? 'PIX' : 
-                             venda.forma_pagamento === 'dinheiro' ? 'Dinheiro' : 
-                             venda.forma_pagamento === 'cartao' ? 'Cartão' : 
-                             venda.forma_pagamento || 'Não informado',
+                           venda.forma_pagamento === 'dinheiro' ? 'Dinheiro' : 
+                           venda.forma_pagamento === 'cartao' ? 'Cartão' : 
+                           venda.forma_pagamento || 'Não informado',
           'Quantidade de Produtos': venda.itens?.length || 0,
           'Produtos': produtosLista
         };
@@ -290,12 +293,28 @@ const Vendas = () => {
             'Status da Venda': venda.status,
             'Status Pagamento': venda.status_pagamento,
             'Forma Pagamento': venda.forma_pagamento === 'pix' ? 'PIX' : 
-                               venda.forma_pagamento === 'dinheiro' ? 'Dinheiro' : 
-                               venda.forma_pagamento === 'cartao' ? 'Cartão' : 
-                               venda.forma_pagamento || 'Não informado'
+                             venda.forma_pagamento === 'dinheiro' ? 'Dinheiro' : 
+                             venda.forma_pagamento === 'cartao' ? 'Cartão' : 
+                             venda.forma_pagamento || 'Não informado'
           });
         });
       });
+      
+      // Preparar dados para o Excel - Planilha de Inventário de Produtos
+      const dadosInventario = todosProdutos.map(produto => {
+        return {
+          'Código': produto.id,
+          'Produto': produto.nome,
+          'Categoria': produto.categoria || 'Não categorizado',
+          'Preço (R$)': produto.preco.toFixed(2),
+          'Estoque Atual': produto.estoque,
+          'Valor em Estoque (R$)': (produto.preco * produto.estoque).toFixed(2),
+          'Descrição': produto.descricao || ''
+        };
+      });
+      
+      // Ordenar produtos por estoque (do menor para o maior)
+      dadosInventario.sort((a, b) => a['Estoque Atual'] - b['Estoque Atual']);
       
       // Preparar dados para o Excel - Planilha de Resumo
       const resumoVendas = {
@@ -303,6 +322,8 @@ const Vendas = () => {
         'Valor Total (R$)': vendasCompletas.reduce((acc, venda) => acc + venda.total, 0).toFixed(2),
         'Vendas Pendentes': vendasCompletas.filter(v => v.status === 'Pendente').length,
         'Vendas Finalizadas': vendasCompletas.filter(v => v.status === 'Finalizada').length,
+        'Total de Produtos em Estoque': todosProdutos.reduce((acc, produto) => acc + produto.estoque, 0),
+        'Valor Total em Estoque (R$)': todosProdutos.reduce((acc, produto) => acc + (produto.preco * produto.estoque), 0).toFixed(2),
         'Data do Relatório': format(new Date(), 'dd/MM/yyyy')
       };
       
@@ -320,6 +341,10 @@ const Vendas = () => {
       // Adicionar planilha de Itens
       const wsItens = XLSX.utils.json_to_sheet(dadosItens);
       XLSX.utils.book_append_sheet(wb, wsItens, "Itens Detalhados");
+      
+      // Adicionar planilha de Inventário de Produtos
+      const wsInventario = XLSX.utils.json_to_sheet(dadosInventario);
+      XLSX.utils.book_append_sheet(wb, wsInventario, "Inventário de Produtos");
       
       // Gerar nome do arquivo com data atual
       const dataAtual = format(new Date(), 'dd-MM-yyyy');
