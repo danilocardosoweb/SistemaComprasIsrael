@@ -28,6 +28,7 @@ import * as XLSX from 'xlsx';
 // Interface para exibição na interface
 type VendaExibicao = {
   id: string;
+  cliente_id?: string;
   cliente: string;
   data: string;
   total: number;
@@ -36,6 +37,7 @@ type VendaExibicao = {
   itens?: ItemVenda[];
   forma_pagamento?: string;
   status_pagamento: StatusPagamento;
+  geracao?: string;
 };
 
 const Vendas = () => {
@@ -59,6 +61,7 @@ const Vendas = () => {
         // Converter para o formato de exibição
         const vendasFormatadas: VendaExibicao[] = vendasSupabase.map(venda => ({
           id: venda.id,
+          cliente_id: venda.cliente_id || undefined,
           cliente: venda.cliente_nome,
           data: format(new Date(venda.data_venda), 'dd/MM/yyyy'),
           total: venda.total,
@@ -161,6 +164,48 @@ const Vendas = () => {
     }
   };
 
+  const handleFormaPagamentoChange = async (novaForma: string) => {
+    if (!selectedVenda) return;
+
+    try {
+      // Atualizar a forma de pagamento no banco de dados
+      await api.vendas.atualizar(selectedVenda.id, {
+        forma_pagamento: novaForma
+      });
+
+      // Atualizar o estado local
+      setSelectedVenda(prev => {
+        if (prev) {
+          return { ...prev, forma_pagamento: novaForma };
+        }
+        return prev;
+      });
+
+      // Atualizar a lista de vendas
+      const vendasAtualizadas = vendas.map(v => {
+        if (v.id === selectedVenda.id) {
+          return { 
+            ...v, 
+            forma_pagamento: novaForma
+          };
+        }
+        return v;
+      });
+      setVendas(vendasAtualizadas);
+
+      toast({
+        title: "Forma de pagamento atualizada",
+        description: `A forma de pagamento foi atualizada para ${novaForma === 'pix' ? 'PIX' : novaForma === 'dinheiro' ? 'Dinheiro' : 'Cartão'}`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Erro ao atualizar forma de pagamento",
+        description: error.message || "Ocorreu um erro ao atualizar a forma de pagamento.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case "Finalizada":
@@ -182,13 +227,26 @@ const Vendas = () => {
         description: "Aguarde enquanto preparamos seu relatório...",
       });
       
-      // Buscar todas as vendas com seus itens
+      // Buscar todas as vendas com seus itens e informações dos clientes
       const vendasCompletas = await Promise.all(
         vendas.map(async (venda) => {
           const itens = await api.vendas.obterItens(venda.id);
+          
+          // Buscar informações do cliente se tiver cliente_id
+          let clienteInfo = { geracao: '' };
+          if (venda.cliente_id) {
+            try {
+              const cliente = await api.clientes.obter(venda.cliente_id);
+              clienteInfo = { geracao: cliente.geracao || '' };
+            } catch (error) {
+              console.error('Erro ao buscar cliente:', error);
+            }
+          }
+          
           return {
             ...venda,
-            itens
+            itens,
+            geracao: clienteInfo.geracao
           };
         })
       );
@@ -203,6 +261,7 @@ const Vendas = () => {
         return {
           'Código': venda.id,
           'Cliente': venda.cliente,
+          'Geração': venda.geracao || 'Não informado',
           'Data': venda.data,
           'Total (R$)': venda.total.toFixed(2),
           'Status': venda.status,
@@ -420,12 +479,19 @@ const Vendas = () => {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Forma de Pagamento</p>
-                <p className="font-medium">
-                  {selectedVenda?.forma_pagamento === 'pix' ? 'PIX' : 
-                   selectedVenda?.forma_pagamento === 'dinheiro' ? 'Dinheiro' : 
-                   selectedVenda?.forma_pagamento === 'cartao' ? 'Cartão' : 
-                   selectedVenda?.forma_pagamento || 'Não informado'}
-                </p>
+                <Select
+                  value={selectedVenda?.forma_pagamento || ''}
+                  onValueChange={(value: string) => handleFormaPagamentoChange(value)}
+                >
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="Forma de Pagamento" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pix">PIX</SelectItem>
+                    <SelectItem value="dinheiro">Dinheiro</SelectItem>
+                    <SelectItem value="cartao">Cartão</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Status do Pagamento</p>
@@ -438,8 +504,8 @@ const Vendas = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="Pendente">Pendente</SelectItem>
-                    <SelectItem value="Feito">Feito</SelectItem>
-                    <SelectItem value="Realizado">Realizado</SelectItem>
+                    <SelectItem value="Feito (pago)">Feito (pago)</SelectItem>
+                    <SelectItem value="Cancelado">Cancelado</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

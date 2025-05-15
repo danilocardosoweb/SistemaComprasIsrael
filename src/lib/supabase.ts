@@ -44,7 +44,7 @@ export type Produto = {
   created_at: string;
 };
 
-export type StatusPagamento = 'Pendente' | 'Feito' | 'Realizado';
+export type StatusPagamento = 'Pendente' | 'Feito (pago)' | 'Cancelado';
 
 export type StatusVenda = 'Pendente' | 'Finalizada' | 'Cancelada';
 
@@ -307,9 +307,12 @@ export const api = {
         .from('vendas')
         .update({
           ...venda,
-          // Se o status_pagamento for Feito ou Realizado, a venda é Finalizada
-          status: venda.status_pagamento === 'Feito' || venda.status_pagamento === 'Realizado' 
+          // Se o status_pagamento for Feito (pago), a venda é Finalizada
+          // Se o status_pagamento for Cancelado, a venda é Cancelada
+          status: venda.status_pagamento === 'Feito (pago)' 
             ? 'Finalizada' 
+            : venda.status_pagamento === 'Cancelado'
+            ? 'Cancelada'
             : 'Pendente'
         })
         .eq('id', id)

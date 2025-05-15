@@ -23,6 +23,7 @@ const Relatorios = () => {
   const [novosClientesData, setNovosClientesData] = useState<any[]>([]);
   const [clientesFrequentesData, setClientesFrequentesData] = useState<any[]>([]);
   const [valorMedioCompraData, setValorMedioCompraData] = useState<any[]>([]);
+  const [vendasPorGeracaoData, setVendasPorGeracaoData] = useState<any[]>([]);
   
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8'];
 
@@ -76,6 +77,9 @@ const Relatorios = () => {
     
     // 6. Valor médio de compra
     processarValorMedioCompra(vendas);
+    
+    // 7. Vendas por geração
+    processarVendasPorGeracao(vendas);
   };
   
   // Processar vendas por período (últimos 12 meses)
@@ -249,6 +253,60 @@ const Relatorios = () => {
     setValorMedioCompraData(clientesArray);
   };
   
+  // Processar vendas por geração
+  const processarVendasPorGeracao = async (vendas: Venda[]) => {
+    // Precisamos buscar os clientes para obter as gerações
+    try {
+      // Inicializar um objeto para armazenar as vendas por geração
+      const vendasPorGeracao: Record<string, number> = {};
+      
+      // Para cada venda, buscar o cliente e sua geração
+      for (const venda of vendas) {
+        if (venda.cliente_id) {
+          try {
+            const cliente = await api.clientes.obter(venda.cliente_id);
+            const geracao = cliente.geracao || 'Não informado';
+            
+            // Somar o valor da venda na geração correspondente
+            if (vendasPorGeracao[geracao]) {
+              vendasPorGeracao[geracao] += venda.total;
+            } else {
+              vendasPorGeracao[geracao] = venda.total;
+            }
+          } catch (error) {
+            console.error('Erro ao buscar cliente:', error);
+            // Se não conseguir buscar o cliente, adicionar na categoria 'Não informado'
+            if (vendasPorGeracao['Não informado']) {
+              vendasPorGeracao['Não informado'] += venda.total;
+            } else {
+              vendasPorGeracao['Não informado'] = venda.total;
+            }
+          }
+        } else {
+          // Se a venda não tiver cliente_id, adicionar na categoria 'Não informado'
+          if (vendasPorGeracao['Não informado']) {
+            vendasPorGeracao['Não informado'] += venda.total;
+          } else {
+            vendasPorGeracao['Não informado'] = venda.total;
+          }
+        }
+      }
+      
+      // Converter o objeto em um array para o gráfico
+      const dadosGrafico = Object.entries(vendasPorGeracao)
+        .map(([name, value]) => ({
+          name,
+          value: Number(value.toFixed(2))
+        }))
+        .sort((a, b) => b.value - a.value); // Ordenar do maior para o menor
+      
+      setVendasPorGeracaoData(dadosGrafico);
+    } catch (error) {
+      console.error('Erro ao processar vendas por geração:', error);
+      setVendasPorGeracaoData([]);
+    }
+  };
+  
   // Carregar dados ao montar o componente
   useEffect(() => {
     carregarDados();
@@ -276,80 +334,17 @@ const Relatorios = () => {
           
           <TabsContent value="vendas">
             <div className="grid gap-6 md:grid-cols-2">
-              <Card>
+              <Card className="md:col-span-2">
                 <CardHeader>
                   <CardTitle>Vendas por Período</CardTitle>
                   <CardDescription>
-                    Total de vendas nos últimos meses
+                    Últimos 12 meses
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="h-[300px]">
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart
-                        data={vendasPorPeriodoData}
-                        margin={{
-                          top: 10,
-                          right: 30,
-                          left: 0,
-                          bottom: 0,
-                        }}
-                      >
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="name" />
-                        <YAxis />
-                        <Tooltip formatter={(value) => [`R$ ${value.toFixed(2)}`, 'Vendas']} />
-                        <Area type="monotone" dataKey="vendas" stroke="#8884d8" fill="#8884d8" />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  </div>
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardHeader>
-                  <CardTitle>Métodos de Pagamento</CardTitle>
-                  <CardDescription>
-                    Distribuição dos métodos de pagamento
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-[300px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={metodosPagamentoData}
-                          cx="50%"
-                          cy="50%"
-                          labelLine={false}
-                          outerRadius={80}
-                          fill="#8884d8"
-                          dataKey="value"
-                          label={({name, percent}) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                        >
-                          {metodosPagamentoData.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                          ))}
-                        </Pie>
-                        <Tooltip formatter={(value) => [`${value} vendas`, 'Quantidade']} />
-                        <Legend />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
-                </CardContent>
-              </Card>
-              
-              <Card className="md:col-span-2">
-                <CardHeader>
-                  <CardTitle>Histórico de Vendas</CardTitle>
-                  <CardDescription>
-                    Tendências de vendas ao longo do tempo
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-[300px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart
                         data={vendasPorPeriodoData}
                         margin={{
                           top: 5,
@@ -361,10 +356,81 @@ const Relatorios = () => {
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis dataKey="name" />
                         <YAxis />
-                        <Tooltip formatter={(value) => [`R$ ${value.toFixed(2)}`, 'Vendas']} />
+                        <Tooltip formatter={(value) => [`R$ ${value}`, 'Vendas']} />
+                        <Area type="monotone" dataKey="vendas" stroke="#8884d8" fill="#8884d8" />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader>
+                  <CardTitle>Métodos de Pagamento</CardTitle>
+                  <CardDescription>
+                    Distribuição por forma de pagamento
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-[300px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={metodosPagamentoData}
+                          cx="50%"
+                          cy="50%"
+                          labelLine={true}
+                          outerRadius={80}
+                          fill="#8884d8"
+                          dataKey="value"
+                          label={({ name, percent }) => {
+                            const percentNumber = Number(percent);
+                            return `${name}: ${(percentNumber * 100).toFixed(0)}%`;
+                          }}
+                        >
+                          {metodosPagamentoData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip formatter={(value) => [`R$ ${value}`, 'Total']} />
                         <Legend />
-                        <Line type="monotone" dataKey="vendas" stroke="#8884d8" activeDot={{ r: 8 }} />
-                      </LineChart>
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader>
+                  <CardTitle>Vendas por Geração</CardTitle>
+                  <CardDescription>
+                    Distribuição de vendas por geração
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-[400px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart
+                        data={vendasPorGeracaoData}
+                        layout="vertical"
+                        margin={{
+                          top: 5,
+                          right: 30,
+                          left: 150,
+                          bottom: 5,
+                        }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis type="number" />
+                        <YAxis 
+                          type="category" 
+                          dataKey="name" 
+                          width={150}
+                          tick={{ fontSize: 12 }}
+                        />
+                        <Tooltip formatter={(value) => [`R$ ${value}`, 'Total']} />
+                        <Bar dataKey="value" fill="#82ca9d" />
+                      </BarChart>
                     </ResponsiveContainer>
                   </div>
                 </CardContent>
@@ -382,7 +448,7 @@ const Relatorios = () => {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="h-[300px]">
+                  <div className="h-[400px]">
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart
                         data={produtosMaisVendidosData}
@@ -390,13 +456,18 @@ const Relatorios = () => {
                         margin={{
                           top: 5,
                           right: 30,
-                          left: 80,
+                          left: 200,
                           bottom: 5,
                         }}
                       >
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis type="number" />
-                        <YAxis type="category" dataKey="name" />
+                        <YAxis 
+                          type="category" 
+                          dataKey="name" 
+                          width={200}
+                          tick={{ fontSize: 12 }}
+                        />
                         <Tooltip formatter={(value) => [`${value} unidades`, 'Vendidos']} />
                         <Bar dataKey="vendas" fill="#8884d8" />
                       </BarChart>
@@ -413,7 +484,7 @@ const Relatorios = () => {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="h-[300px]">
+                  <div className="h-[400px]">
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart
                         data={estoqueProdutosData}
@@ -421,13 +492,18 @@ const Relatorios = () => {
                         margin={{
                           top: 5,
                           right: 30,
-                          left: 80,
+                          left: 200,
                           bottom: 5,
                         }}
                       >
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis type="number" />
-                        <YAxis type="category" dataKey="name" />
+                        <YAxis 
+                          type="category" 
+                          dataKey="name" 
+                          width={200}
+                          tick={{ fontSize: 12 }}
+                        />
                         <Tooltip formatter={(value) => [`${value} unidades`, 'Em estoque']} />
                         <Bar dataKey="quantidade" fill="#82ca9d" />
                       </BarChart>
@@ -448,7 +524,7 @@ const Relatorios = () => {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="h-[300px]">
+                  <div className="h-[400px]">
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart
                         data={clientesFrequentesData}
@@ -456,13 +532,18 @@ const Relatorios = () => {
                         margin={{
                           top: 5,
                           right: 30,
-                          left: 80,
+                          left: 200,
                           bottom: 5,
                         }}
                       >
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis type="number" />
-                        <YAxis type="category" dataKey="name" />
+                        <YAxis 
+                          type="category" 
+                          dataKey="name" 
+                          width={200}
+                          tick={{ fontSize: 12 }}
+                        />
                         <Tooltip formatter={(value) => [`${value} compras`, 'Total']} />
                         <Bar dataKey="compras" fill="#8884d8" />
                       </BarChart>

@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Trash2, Plus, FileUp, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
-import { api, Produto, ItemVenda as SupabaseItemVenda, Cliente, StatusPagamento } from "@/lib/supabase";
+import { api, Produto, ItemVenda as SupabaseItemVenda, Cliente, StatusPagamento, GERACOES } from "@/lib/supabase";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { format } from "date-fns";
 
@@ -21,6 +21,7 @@ type ItemVenda = {
 const NovaVenda = () => {
   const [cliente, setCliente] = useState("");
   const [telefone, setTelefone] = useState("");
+  const [geracao, setGeracao] = useState<string>("");
   const [showCadastroCliente, setShowCadastroCliente] = useState(false);
   const [cadastrandoCliente, setCadastrandoCliente] = useState(false);
   const [produtos, setProdutos] = useState<Produto[]>([]);
@@ -52,6 +53,7 @@ const NovaVenda = () => {
       const novoCliente = await api.clientes.criar({
         nome: cliente,
         telefone,
+        geracao: geracao || undefined,
       });
 
       toast({
@@ -59,6 +61,10 @@ const NovaVenda = () => {
         description: "Cliente cadastrado com sucesso!",
       });
 
+      // Limpar os campos do formulário
+      setCliente("");
+      setTelefone("");
+      setGeracao("");
       setShowCadastroCliente(false);
     } catch (error: any) {
       toast({
@@ -183,7 +189,7 @@ const NovaVenda = () => {
           total: calcularTotal(),
           forma_pagamento: formaPagamento,
           status_pagamento: statusPagamento,
-          status: statusPagamento === 'Feito' || statusPagamento === 'Realizado' ? 'Finalizada' : 'Pendente'
+          status: statusPagamento === 'Feito (pago)' ? 'Finalizada' : statusPagamento === 'Cancelado' ? 'Cancelada' : 'Pendente'
         },
         itensParaAPI
       );
@@ -367,8 +373,8 @@ const NovaVenda = () => {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="Pendente">Pendente</SelectItem>
-                      <SelectItem value="Feito">Feito</SelectItem>
-                      <SelectItem value="Realizado">Realizado</SelectItem>
+                      <SelectItem value="Feito (pago)">Feito (pago)</SelectItem>
+                      <SelectItem value="Cancelado">Cancelado</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -477,6 +483,21 @@ const NovaVenda = () => {
                 value={telefone}
                 onChange={(e) => setTelefone(e.target.value)}
               />
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="cadastroGeracao">Geração</Label>
+              <Select value={geracao} onValueChange={setGeracao}>
+                <SelectTrigger id="cadastroGeracao">
+                  <SelectValue placeholder="Selecione a geração" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="nenhuma">Nenhuma</SelectItem>
+                  {GERACOES.map((g) => (
+                    <SelectItem key={g} value={g}>{g}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
