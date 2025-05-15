@@ -330,6 +330,25 @@ export const api = {
       
       if (error) throw error;
       return data as ItemVenda[];
+    },
+    
+    excluir: async (id: string) => {
+      // Primeiro, excluímos os itens relacionados à venda
+      const { error: erroItens } = await supabase
+        .from('itens_venda')
+        .delete()
+        .eq('venda_id', id);
+      
+      if (erroItens) throw erroItens;
+      
+      // Depois, excluímos a venda
+      const { error } = await supabase
+        .from('vendas')
+        .delete()
+        .eq('id', id);
+      
+      if (error) throw error;
+      return true;
     }
   }
 };

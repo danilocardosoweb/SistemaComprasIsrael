@@ -18,7 +18,7 @@ import {
   DropdownMenuTrigger 
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, MoreHorizontal, Eye, Loader2, FileDown } from "lucide-react";
+import { Plus, Search, MoreHorizontal, Eye, Loader2, FileDown, Trash2 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { api, Venda as SupabaseVenda, ItemVenda, StatusPagamento, StatusVenda } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
@@ -47,7 +47,10 @@ const Vendas = () => {
   const [showDetails, setShowDetails] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadingDetalhes, setLoadingDetalhes] = useState(false);
+  const [excluindoVenda, setExcluindoVenda] = useState(false);
   const [itensVenda, setItensVenda] = useState<ItemVenda[]>([]);
+  const [vendaParaExcluir, setVendaParaExcluir] = useState<string | null>(null);
+  const [confirmacaoExclusaoAberta, setConfirmacaoExclusaoAberta] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
   
@@ -206,6 +209,41 @@ const Vendas = () => {
     }
   };
 
+  // Função para lidar com a exclusão de uma venda
+  const handleExcluirVenda = async () => {
+    if (!vendaParaExcluir) return;
+    
+    try {
+      setExcluindoVenda(true);
+      
+      // Chamar a API para excluir a venda
+      await api.vendas.excluir(vendaParaExcluir);
+      
+      // Atualizar a lista de vendas (removendo a venda excluída)
+      setVendas(vendas.filter(v => v.id !== vendaParaExcluir));
+      
+      // Fechar o diálogo de confirmação
+      setConfirmacaoExclusaoAberta(false);
+      
+      // Limpar o ID da venda para excluir
+      setVendaParaExcluir(null);
+      
+      // Mostrar mensagem de sucesso
+      toast({
+        title: "Venda excluída",
+        description: "A venda foi excluída com sucesso.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Erro ao excluir venda",
+        description: error.message || "Ocorreu um erro ao excluir a venda.",
+        variant: "destructive",
+      });
+    } finally {
+      setExcluindoVenda(false);
+    }
+  };
+  
   const getStatusColor = (status: string) => {
     switch (status) {
       case "Finalizada":
@@ -458,6 +496,16 @@ const Vendas = () => {
                           <DropdownMenuItem asChild>
                             <Link to={`/vendas/${venda.id}/comprovante`}>Gerar comprovante</Link>
                           </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            onClick={() => {
+                              setVendaParaExcluir(venda.id);
+                              setConfirmacaoExclusaoAberta(true);
+                            }}
+                            className="text-destructive focus:text-destructive"
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Deletar venda
+                          </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
@@ -574,6 +622,48 @@ const Vendas = () => {
                 </div>
               )}
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de confirmação para excluir venda */}
+      <Dialog open={confirmacaoExclusaoAberta} onOpenChange={setConfirmacaoExclusaoAberta}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Confirmar exclusão</DialogTitle>
+          </DialogHeader>
+          
+          <div className="py-4">
+            <p className="text-muted-foreground">
+              Tem certeza que deseja excluir esta venda? Esta ação não pode ser desfeita.
+            </p>
+            <p className="text-muted-foreground mt-2">
+              <strong>Atenção:</strong> Esta ação <span className="text-destructive font-medium">NÃO</span> restaurará automaticamente o estoque dos produtos vendidos.
+            </p>
+          </div>
+          
+          <div className="flex justify-end gap-3">
+            <Button
+              variant="outline"
+              onClick={() => setConfirmacaoExclusaoAberta(false)}
+              disabled={excluindoVenda}
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleExcluirVenda}
+              disabled={excluindoVenda}
+            >
+              {excluindoVenda ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Excluindo...
+                </>
+              ) : (
+                'Excluir venda'
+              )}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
