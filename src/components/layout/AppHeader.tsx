@@ -23,7 +23,7 @@ export function AppHeader({ toggleSidebar }: AppHeaderProps) {
             alt="Logo Igreja" 
             className="h-8 w-auto" 
           />
-          <h1 className="text-lg font-semibold hidden sm:block">Igreja Dashboard</h1>
+          <h1 className="text-lg font-semibold hidden sm:block">Dashboard</h1>
         </div>
       </div>
     </header>
