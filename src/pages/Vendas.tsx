@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -18,9 +18,10 @@ import {
   DropdownMenuTrigger 
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, MoreHorizontal, Eye, Loader2, FileDown, Trash2 } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import { Plus, Search, MoreHorizontal, Eye, Loader2, FileDown, Trash2, Edit, Save, X, MinusCircle } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
-import { api, Venda as SupabaseVenda, ItemVenda, StatusPagamento, StatusVenda } from "@/lib/supabase";
+import { api, Venda as SupabaseVenda, ItemVenda, StatusPagamento, StatusVenda, Produto } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import * as XLSX from 'xlsx';
@@ -51,8 +52,33 @@ const Vendas = () => {
   const [itensVenda, setItensVenda] = useState<ItemVenda[]>([]);
   const [vendaParaExcluir, setVendaParaExcluir] = useState<string | null>(null);
   const [confirmacaoExclusaoAberta, setConfirmacaoExclusaoAberta] = useState(false);
+  const [modoEdicao, setModoEdicao] = useState(false);
+  const [vendaEmEdicao, setVendaEmEdicao] = useState<VendaExibicao | null>(null);
+  const [produtos, setProdutos] = useState<Produto[]>([]);
+  const [selectedProdutoId, setSelectedProdutoId] = useState<string>("");
+  const [quantidade, setQuantidade] = useState<number>(1);
+  const [salvandoEdicao, setSalvandoEdicao] = useState(false);
+  const [removendoItem, setRemovendoItem] = useState<string | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
+  
+  // Carregar produtos para a edição de vendas
+  useEffect(() => {
+    const carregarProdutos = async () => {
+      try {
+        const produtosData = await api.produtos.listar();
+        setProdutos(produtosData);
+      } catch (error: any) {
+        toast({
+          title: "Erro ao carregar produtos",
+          description: error.message || "Ocorreu um erro ao carregar os produtos.",
+          variant: "destructive",
+        });
+      }
+    };
+    
+    carregarProdutos();
+  }, [toast]);
   
   // Carregar vendas do Supabase ao montar o componente
   useEffect(() => {
@@ -120,6 +146,138 @@ const Vendas = () => {
     } finally {
       setLoadingDetalhes(false);
     }
+  };
+  
+  // Iniciar modo de edição da venda
+  const handleEditarVenda = async (venda: VendaExibicao) => {
+    setVendaEmEdicao(venda);
+    setLoadingDetalhes(true);
+    
+    try {
+      // Carregar os itens da venda
+      const itens = await api.vendas.obterItens(venda.id);
+      setItensVenda(itens);
+      setModoEdicao(true);
+    } catch (error: any) {
+      toast({
+        title: "Erro ao carregar detalhes para edição",
+        description: error.message || "Ocorreu um erro ao carregar os detalhes da venda para edição.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingDetalhes(false);
+    }
+  };
+  
+  // Adicionar novo item à venda em edição
+  const handleAdicionarItem = async () => {
+    if (!vendaEmEdicao || !selectedProdutoId || quantidade <= 0) {
+      toast({
+        title: "Erro ao adicionar produto",
+        description: "Selecione um produto e quantidade válida.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    const produtoSelecionado = produtos.find(p => p.id === selectedProdutoId);
+    if (!produtoSelecionado) return;
+    
+    try {
+      setSalvandoEdicao(true);
+      
+      // Preparar o novo item
+      const novoItem = {
+        produto_id: produtoSelecionado.id,
+        produto_nome: produtoSelecionado.nome,
+        quantidade,
+        preco_unitario: produtoSelecionado.preco,
+        subtotal: produtoSelecionado.preco * quantidade
+      };
+      
+      // Adicionar o item à venda
+      const resultado = await api.vendas.adicionarItem(vendaEmEdicao.id, novoItem);
+      
+      // Atualizar a lista de itens
+      setItensVenda(prev => [...prev, resultado.itemAdicionado]);
+      
+      // Atualizar o total da venda
+      setVendaEmEdicao(prev => {
+        if (prev) {
+          return { ...prev, total: resultado.novoTotal };
+        }
+        return prev;
+      });
+      
+      // Limpar os campos
+      setSelectedProdutoId("");
+      setQuantidade(1);
+      
+      toast({
+        title: "Produto adicionado",
+        description: "O produto foi adicionado à venda com sucesso.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Erro ao adicionar produto",
+        description: error.message || "Ocorreu um erro ao adicionar o produto à venda.",
+        variant: "destructive",
+      });
+    } finally {
+      setSalvandoEdicao(false);
+    }
+  };
+  
+  // Remover item da venda em edição
+  const handleRemoverItem = async (itemId: string) => {
+    if (!vendaEmEdicao) return;
+    
+    try {
+      setRemovendoItem(itemId);
+      
+      // Remover o item da venda
+      const resultado = await api.vendas.removerItem(itemId);
+      
+      // Atualizar a lista de itens
+      setItensVenda(prev => prev.filter(item => item.id !== itemId));
+      
+      // Atualizar o total da venda
+      setVendaEmEdicao(prev => {
+        if (prev) {
+          return { ...prev, total: resultado.novoTotal };
+        }
+        return prev;
+      });
+      
+      toast({
+        title: "Produto removido",
+        description: "O produto foi removido da venda com sucesso.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Erro ao remover produto",
+        description: error.message || "Ocorreu um erro ao remover o produto da venda.",
+        variant: "destructive",
+      });
+    } finally {
+      setRemovendoItem(null);
+    }
+  };
+  
+  // Finalizar edição da venda
+  const handleFinalizarEdicao = () => {
+    // Atualizar a venda na lista
+    setVendas(prev => prev.map(v => v.id === vendaEmEdicao?.id ? { ...v, total: vendaEmEdicao.total } : v));
+    
+    // Limpar o estado de edição
+    setModoEdicao(false);
+    setVendaEmEdicao(null);
+    setItensVenda([]);
+    
+    toast({
+      title: "Venda atualizada",
+      description: "A venda foi atualizada com sucesso.",
+    });
   };
 
   const handleStatusPagamentoChange = async (novoStatus: StatusPagamento) => {
@@ -493,6 +651,10 @@ const Vendas = () => {
                             <Eye className="mr-2 h-4 w-4" />
                             Ver detalhes
                           </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleEditarVenda(venda)}>
+                            <Edit className="mr-2 h-4 w-4" />
+                            Editar venda
+                          </DropdownMenuItem>
                           <DropdownMenuItem asChild>
                             <Link to={`/vendas/${venda.id}/comprovante`}>Gerar comprovante</Link>
                           </DropdownMenuItem>
@@ -665,6 +827,157 @@ const Vendas = () => {
               )}
             </Button>
           </div>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Dialog para editar venda */}
+      <Dialog open={modoEdicao} onOpenChange={(open) => !salvandoEdicao && setModoEdicao(open)}>
+        <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>Editar Venda #{vendaEmEdicao?.id}</DialogTitle>
+          </DialogHeader>
+          
+          <div className="grid gap-6">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <div>
+                <p className="text-sm text-muted-foreground">Cliente</p>
+                <p className="font-medium">{vendaEmEdicao?.cliente}</p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Data</p>
+                <p className="font-medium">{vendaEmEdicao?.data}</p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Status</p>
+                <Badge className={`${vendaEmEdicao && getStatusColor(vendaEmEdicao.status)} mt-1`}>
+                  {vendaEmEdicao?.status}
+                </Badge>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Total</p>
+                <p className="font-medium">R$ {vendaEmEdicao?.total.toFixed(2)}</p>
+              </div>
+            </div>
+            
+            <div className="border-t pt-4">
+              <p className="text-sm font-medium mb-4">Itens da venda</p>
+              
+              {loadingDetalhes ? (
+                <div className="bg-accent/30 p-4 rounded-md text-center">
+                  <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
+                  <p className="text-muted-foreground">Carregando itens da venda...</p>
+                </div>
+              ) : itensVenda.length > 0 ? (
+                <div className="border rounded-md overflow-hidden">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Produto</TableHead>
+                        <TableHead className="text-right">Qtd</TableHead>
+                        <TableHead className="text-right">Preço Unit.</TableHead>
+                        <TableHead className="text-right">Subtotal</TableHead>
+                        <TableHead className="w-[50px]"></TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {itensVenda.map((item) => (
+                        <TableRow key={item.id}>
+                          <TableCell>{item.produto_nome}</TableCell>
+                          <TableCell className="text-right">{item.quantidade}</TableCell>
+                          <TableCell className="text-right">R$ {item.preco_unitario.toFixed(2)}</TableCell>
+                          <TableCell className="text-right">R$ {item.subtotal.toFixed(2)}</TableCell>
+                          <TableCell>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              onClick={() => handleRemoverItem(item.id)}
+                              disabled={removendoItem === item.id}
+                            >
+                              {removendoItem === item.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <MinusCircle className="h-4 w-4 text-destructive" />
+                              )}
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              ) : (
+                <div className="bg-accent/30 p-4 rounded-md text-center">
+                  <p className="text-muted-foreground">
+                    Nenhum item encontrado para esta venda.
+                  </p>
+                </div>
+              )}
+            </div>
+            
+            <div className="border-t pt-4">
+              <p className="text-sm font-medium mb-4">Adicionar novo item</p>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                  <Label htmlFor="produto">Produto</Label>
+                  <Select value={selectedProdutoId} onValueChange={setSelectedProdutoId}>
+                    <SelectTrigger id="produto">
+                      <SelectValue placeholder="Selecione um produto" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {produtos.map(produto => (
+                        <SelectItem key={produto.id} value={produto.id}>
+                          {produto.nome} - R$ {produto.preco.toFixed(2)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div>
+                  <Label htmlFor="quantidade">Quantidade</Label>
+                  <Input
+                    id="quantidade"
+                    type="number"
+                    min="1"
+                    value={quantidade}
+                    onChange={(e) => setQuantidade(parseInt(e.target.value) || 1)}
+                  />
+                </div>
+                
+                <div className="flex items-end">
+                  <Button 
+                    onClick={handleAdicionarItem}
+                    disabled={!selectedProdutoId || quantidade <= 0 || salvandoEdicao}
+                    className="w-full"
+                  >
+                    {salvandoEdicao ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Adicionando...
+                      </>
+                    ) : (
+                      <>
+                        <Plus className="mr-2 h-4 w-4" />
+                        Adicionar Produto
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setModoEdicao(false)} disabled={salvandoEdicao}>
+              <X className="mr-2 h-4 w-4" />
+              Cancelar
+            </Button>
+            <Button onClick={handleFinalizarEdicao} disabled={salvandoEdicao}>
+              <Save className="mr-2 h-4 w-4" />
+              Concluir Edição
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

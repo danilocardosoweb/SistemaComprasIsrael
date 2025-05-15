@@ -349,6 +349,98 @@ export const api = {
       
       if (error) throw error;
       return true;
+    },
+    
+    // Remover um item específico de uma venda
+    removerItem: async (itemId: string) => {
+      // Primeiro, obtemos o item para saber a quantidade e o produto_id
+      const { data: item, error: erroConsulta } = await supabase
+        .from('itens_venda')
+        .select('*')
+        .eq('id', itemId)
+        .single();
+      
+      if (erroConsulta) throw erroConsulta;
+      
+      // Excluir o item
+      const { error } = await supabase
+        .from('itens_venda')
+        .delete()
+        .eq('id', itemId);
+      
+      if (error) throw error;
+      
+      // Atualizar o total da venda
+      const { data: venda, error: erroVenda } = await supabase
+        .from('vendas')
+        .select('*')
+        .eq('id', item.venda_id)
+        .single();
+      
+      if (erroVenda) throw erroVenda;
+      
+      // Calcular o novo total
+      const novoTotal = venda.total - item.subtotal;
+      
+      // Atualizar a venda com o novo total
+      const { error: erroAtualizacao } = await supabase
+        .from('vendas')
+        .update({ total: novoTotal })
+        .eq('id', item.venda_id);
+      
+      if (erroAtualizacao) throw erroAtualizacao;
+      
+      // Restaurar o estoque do produto
+      try {
+        // Aqui estamos adicionando a quantidade de volta ao estoque (por isso o valor negativo)
+        await api.produtos.atualizarEstoque(item.produto_id, -item.quantidade);
+      } catch (erro) {
+        console.error('Erro ao restaurar estoque:', erro);
+        throw erro;
+      }
+      
+      return { itemRemovido: item, novoTotal };
+    },
+    
+    // Adicionar um novo item a uma venda existente
+    adicionarItem: async (vendaId: string, item: Omit<ItemVenda, 'id' | 'venda_id'>) => {
+      // Inserir o novo item
+      const { data, error } = await supabase
+        .from('itens_venda')
+        .insert([{ ...item, venda_id: vendaId }])
+        .select();
+      
+      if (error) throw error;
+      
+      // Atualizar o total da venda
+      const { data: venda, error: erroVenda } = await supabase
+        .from('vendas')
+        .select('*')
+        .eq('id', vendaId)
+        .single();
+      
+      if (erroVenda) throw erroVenda;
+      
+      // Calcular o novo total
+      const novoTotal = venda.total + item.subtotal;
+      
+      // Atualizar a venda com o novo total
+      const { error: erroAtualizacao } = await supabase
+        .from('vendas')
+        .update({ total: novoTotal })
+        .eq('id', vendaId);
+      
+      if (erroAtualizacao) throw erroAtualizacao;
+      
+      // Atualizar o estoque do produto
+      try {
+        await api.produtos.atualizarEstoque(item.produto_id, item.quantidade);
+      } catch (erro) {
+        console.error('Erro ao atualizar estoque:', erro);
+        throw erro;
+      }
+      
+      return { itemAdicionado: data[0], novoTotal };
     }
   }
 };
