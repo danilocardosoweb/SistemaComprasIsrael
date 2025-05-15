@@ -59,6 +59,10 @@ const Vendas = () => {
   const [quantidade, setQuantidade] = useState<number>(1);
   const [salvandoEdicao, setSalvandoEdicao] = useState(false);
   const [removendoItem, setRemovendoItem] = useState<string | null>(null);
+  const [senhaOfertaDialogAberto, setSenhaOfertaDialogAberto] = useState(false);
+  const [senhaOferta, setSenhaOferta] = useState("");
+  const [alterandoStatusPagamento, setAlterandoStatusPagamento] = useState(false);
+  const [novoStatusPagamentoPendente, setNovoStatusPagamentoPendente] = useState<StatusPagamento | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
   
@@ -280,20 +284,64 @@ const Vendas = () => {
     });
   };
 
+  // Verificar senha para status "Ofertado"
+  const verificarSenhaOferta = () => {
+    if (senhaOferta === "@Master12") {
+      setSenhaOfertaDialogAberto(false);
+      setSenhaOferta("");
+      // Continuar com a alteração do status para "Ofertado"
+      if (novoStatusPagamentoPendente) {
+        atualizarStatusPagamento(novoStatusPagamentoPendente);
+        setNovoStatusPagamentoPendente(null);
+      }
+    } else {
+      toast({
+        title: "Senha incorreta",
+        description: "A senha informada não é válida para alterar o status para Ofertado.",
+        variant: "destructive",
+      });
+    }
+  };
+  
   const handleStatusPagamentoChange = async (novoStatus: StatusPagamento) => {
     if (!selectedVenda) return;
-
+    
+    // Se o status for "Ofertado", solicitar senha
+    if (novoStatus === "Ofertado") {
+      setNovoStatusPagamentoPendente(novoStatus);
+      setSenhaOfertaDialogAberto(true);
+      return;
+    }
+    
+    // Para outros status, continuar normalmente
+    atualizarStatusPagamento(novoStatus);
+  };
+  
+  const atualizarStatusPagamento = async (novoStatus: StatusPagamento) => {
+    if (!selectedVenda) return;
+    
     try {
-      // Atualizar o status de pagamento no banco de dados
+      setAlterandoStatusPagamento(true);
+      
+      // Se for "Ofertado", definir o total como 0
+      const novoTotal = novoStatus === "Ofertado" ? 0 : selectedVenda.total;
+      
+      // Atualizar o status de pagamento e o total (se necessário) no banco de dados
       await api.vendas.atualizar(selectedVenda.id, {
-        status_pagamento: novoStatus
+        status_pagamento: novoStatus,
+        ...(novoStatus === "Ofertado" && { total: 0 })
       });
 
       // Atualizar o estado local
       setSelectedVenda(prev => {
         if (prev) {
           const novoStatusVenda = novoStatus === 'Pendente' ? 'Pendente' : 'Finalizada';
-          return { ...prev, status_pagamento: novoStatus, status: novoStatusVenda };
+          return { 
+            ...prev, 
+            status_pagamento: novoStatus, 
+            status: novoStatusVenda,
+            ...(novoStatus === "Ofertado" && { total: 0 })
+          };
         }
         return prev;
       });
@@ -305,7 +353,8 @@ const Vendas = () => {
           return { 
             ...v, 
             status_pagamento: novoStatus, 
-            status: novoStatusVenda
+            status: novoStatusVenda,
+            ...(novoStatus === "Ofertado" && { total: 0 })
           };
         }
         return v;
@@ -314,7 +363,7 @@ const Vendas = () => {
 
       toast({
         title: "Status de pagamento atualizado",
-        description: `O status de pagamento foi atualizado para ${novoStatus}`,
+        description: `O status de pagamento foi atualizado para ${novoStatus}${novoStatus === "Ofertado" ? " e o valor da venda foi zerado" : ""}.`,
       });
     } catch (error: any) {
       toast({
@@ -322,6 +371,8 @@ const Vendas = () => {
         description: error.message || "Ocorreu um erro ao atualizar o status de pagamento.",
         variant: "destructive",
       });
+    } finally {
+      setAlterandoStatusPagamento(false);
     }
   };
 
@@ -741,6 +792,7 @@ const Vendas = () => {
                     <SelectItem value="Pendente">Pendente</SelectItem>
                     <SelectItem value="Feito (pago)">Feito (pago)</SelectItem>
                     <SelectItem value="Cancelado">Cancelado</SelectItem>
+                    <SelectItem value="Ofertado">Ofertado</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -978,6 +1030,60 @@ const Vendas = () => {
               Concluir Edição
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Dialog para inserir senha ao alterar para status "Ofertado" */}
+      <Dialog open={senhaOfertaDialogAberto} onOpenChange={(open) => !alterandoStatusPagamento && setSenhaOfertaDialogAberto(open)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Autenticação Necessária</DialogTitle>
+          </DialogHeader>
+          
+          <div className="py-4">
+            <p className="text-muted-foreground mb-4">
+              Para alterar o status de pagamento para "Ofertado", é necessário inserir a senha de administrador.
+              Este status irá zerar o valor total da venda.              
+            </p>
+            
+            <div className="space-y-2">
+              <Label htmlFor="senha-oferta">Senha</Label>
+              <Input 
+                id="senha-oferta" 
+                type="password" 
+                value={senhaOferta}
+                onChange={(e) => setSenhaOferta(e.target.value)}
+                placeholder="Digite a senha de administrador"
+              />
+            </div>
+          </div>
+          
+          <div className="flex justify-end gap-3">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setSenhaOfertaDialogAberto(false);
+                setSenhaOferta("");
+                setNovoStatusPagamentoPendente(null);
+              }}
+              disabled={alterandoStatusPagamento}
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={verificarSenhaOferta}
+              disabled={!senhaOferta || alterandoStatusPagamento}
+            >
+              {alterandoStatusPagamento ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Verificando...
+                </>
+              ) : (
+                'Confirmar'
+              )}
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

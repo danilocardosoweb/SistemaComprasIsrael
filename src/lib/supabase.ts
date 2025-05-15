@@ -44,7 +44,7 @@ export type Produto = {
   created_at: string;
 };
 
-export type StatusPagamento = 'Pendente' | 'Feito (pago)' | 'Cancelado';
+export type StatusPagamento = 'Pendente' | 'Feito (pago)' | 'Cancelado' | 'Ofertado';
 
 export type StatusVenda = 'Pendente' | 'Finalizada' | 'Cancelada';
 
