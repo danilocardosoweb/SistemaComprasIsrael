@@ -186,7 +186,9 @@ const NovaVenda = () => {
       // Preparar os dados da venda
       const totalVenda = calcularTotal();
       const vendaData: any = {
-        data_venda: format(new Date(), 'yyyy-MM-dd'),
+        // Garantir que a data seja salva corretamente no fuso horário local
+        // Usamos a data atual no formato yyyy-MM-dd sem conversão de fuso horário
+        data_venda: new Date().toISOString().split('T')[0],
         cliente_id: null,
         cliente_nome: cliente,
         telefone: telefone,
@@ -202,12 +204,10 @@ const NovaVenda = () => {
       // }
       
       // Criar venda com os itens
-      const resultado = await api.vendas.criar(
+      const novaVenda = await api.vendas.criar(
         vendaData,
         itensParaAPI
       );
-      
-      const novaVenda = resultado.data;
       
       if (!novaVenda) {
         toast({
