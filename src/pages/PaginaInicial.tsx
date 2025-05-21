@@ -227,7 +227,7 @@ const PaginaInicial = () => {
                 <span className="inline group-hover:hidden">2025</span>
               </div>
               <h2 className="text-sm md:text-base group-hover:text-2xl group-hover:md:text-3xl font-extrabold mb-1 group-hover:mb-2 text-white drop-shadow-lg transition-all duration-500">
-                <span className="hidden group-hover:inline">Congresso <span className="text-yellow-300">Famílias</span> 2025</span>
+                <span className="hidden group-hover:inline">Congresso de <span className="text-yellow-300">Famílias</span> 2025</span>
                 <span className="inline group-hover:hidden"><span className="text-yellow-300">Famílias</span> 2025</span>
               </h2>
               <p className="text-white/90 mb-1 group-hover:mb-4 max-w-lg text-[10px] md:text-xs group-hover:text-sm group-hover:md:text-base transition-all duration-500 line-clamp-1 group-hover:line-clamp-none">
