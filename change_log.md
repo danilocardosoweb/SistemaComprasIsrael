@@ -1,5 +1,7 @@
 # Log de Alterações - Divino Vendas App
 
+[21/05/2025 14:50] - [funcionalidade] - [Adição de modal com mapa interativo para o endereço do evento] - [Danilo Cardoso]
+
 [21/05/2025 14:48] - [interface] - [Substituição da imagem logo_Sem_Fundo.png por logo_Com_Fundo.png na página de login] - [Danilo Cardoso]
 
 [21/05/2025 14:45] - [interface] - [Correção do texto para "Congresso de Famílias 2025"] - [Danilo Cardoso]

@@ -34,6 +34,7 @@ const PaginaInicial = () => {
   // Estado para controlar a visualização ampliada da imagem
   const [imagemAmpliada, setImagemAmpliada] = useState<string | null>(null);
   const [mostrarQRCode, setMostrarQRCode] = useState(false);
+  const [mostrarMapa, setMostrarMapa] = useState(false);
   // Estado para controlar o pop-up de confirmação da reserva
   const [mostrarConfirmacao, setMostrarConfirmacao] = useState(false);
   const [dadosReserva, setDadosReserva] = useState({
@@ -238,7 +239,11 @@ const PaginaInicial = () => {
                   <Calendar className="h-4 w-4 text-yellow-300 mr-2" />
                   <span>Maio</span>
                 </div>
-                <div className="flex items-center bg-white/20 backdrop-blur-sm px-3 py-1 rounded-lg text-sm">
+                <div 
+                  className="flex items-center bg-white/20 backdrop-blur-sm px-3 py-1 rounded-lg text-sm cursor-pointer hover:bg-white/30 transition-colors duration-300"
+                  onClick={() => setMostrarMapa(true)}
+                  title="Clique para ver no mapa"
+                >
                   <MapPin className="h-4 w-4 text-yellow-300 mr-2" />
                   <span>Igreja Batista Vida Nova</span>
                 </div>
@@ -720,6 +725,66 @@ const PaginaInicial = () => {
                   Sim, confirmar reserva
                 </>
               )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de QR Code */}
+      <Dialog open={mostrarQRCode} onOpenChange={setMostrarQRCode}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>QR Code do Evento</DialogTitle>
+            <DialogDescription>
+              Escaneie o QR Code para mais informações sobre o Congresso de Famílias 2025.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-center p-6">
+            <img 
+              src="/Image/qrcode_evento.png" 
+              alt="QR Code do Evento" 
+              className="w-64 h-64 object-contain"
+            />
+          </div>
+          <DialogFooter className="sm:justify-center">
+            <Button type="button" variant="secondary" onClick={() => setMostrarQRCode(false)}>
+              Fechar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal do Mapa */}
+      <Dialog open={mostrarMapa} onOpenChange={setMostrarMapa}>
+        <DialogContent className="sm:max-w-[800px] max-h-[90vh]">
+          <DialogHeader>
+            <DialogTitle>Localização do Evento</DialogTitle>
+            <DialogDescription>
+              Av. Thereza Ana Cecon Breda, 2065 - Jardim das Colinas, Hortolândia - SP, 13183-255
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-center p-2 h-[400px] w-full">
+            <iframe 
+              src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3675.9935869341897!2d-47.2145611!3d-22.8723693!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x94c8c0a8e5e8ee3b%3A0x7f1d67c9c5eaf7ac!2sAv.%20Thereza%20Ana%20Cecon%20Breda%2C%202065%20-%20Jardim%20das%20Colinas%2C%20Hortol%C3%A2ndia%20-%20SP%2C%2013183-255!5e0!3m2!1spt-BR!2sbr!4v1621609838000!5m2!1spt-BR!2sbr" 
+              width="100%" 
+              height="100%" 
+              style={{ border: 0 }} 
+              allowFullScreen={true} 
+              loading="lazy" 
+              referrerPolicy="no-referrer-when-downgrade"
+              title="Mapa da localização"
+            ></iframe>
+          </div>
+          <DialogFooter className="flex justify-between">
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={() => window.open('https://maps.google.com/?q=Av.+Thereza+Ana+Cecon+Breda,+2065+-+Jardim+das+Colinas,+Hortol%C3%A2ndia+-+SP,+13183-255', '_blank')}
+            >
+              Abrir no Google Maps
+            </Button>
+            <Button type="button" variant="secondary" onClick={() => setMostrarMapa(false)}>
+              Fechar
             </Button>
           </DialogFooter>
         </DialogContent>
