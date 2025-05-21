@@ -348,14 +348,11 @@ const PaginaInicial = () => {
                   Vida Nova Hortolândia
                 </span>
                 <h1 className="text-4xl md:text-5xl font-bold tracking-tight leading-tight text-white drop-shadow-md">
-                  Sistema de Reservas <br />
-                  <span className="text-yellow-300 font-extrabold">Rede de Casais</span>
+                  Sistema de Reservas
                 </h1>
               </div>
               
-              <p className="text-lg md:text-xl text-white max-w-xl bg-purple-950/50 p-3 rounded-md shadow-lg font-semibold border-l-4 border-yellow-300">
-                Conheça nossa seleção de produtos e faça sua reserva de forma simples e rápida.
-              </p>
+              {/* Parágrafo descritivo removido conforme solicitado */}
               
               {/* Botões removidos conforme solicitado */}
             </div>
