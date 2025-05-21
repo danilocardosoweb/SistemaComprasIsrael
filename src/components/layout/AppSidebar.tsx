@@ -31,10 +31,13 @@ export function AppSidebar() {
         <Link to="/" className="flex items-center gap-2">
           <img 
             src={logoSemFundo} 
-            alt="Logo Igreja" 
-            className="h-10 w-auto" 
+            alt="Logo Geração Israel" 
+            className="h-12 w-auto" 
           />
-          <span className="font-bold text-lg">Israel Sales</span>
+          <div className="flex flex-col">
+            <span className="font-bold text-lg">Geração Israel</span>
+            <span className="text-xs text-muted-foreground">Sistema de gerenciamento de Reservas</span>
+          </div>
         </Link>
       </SidebarHeader>
       
@@ -59,7 +62,7 @@ export function AppSidebar() {
       
       <SidebarFooter className="p-4">
         <div className="text-xs text-muted-foreground">
-          Israel Sales System v1.0
+          Geração Israel - Sistema de Reservas v1.0
         </div>
       </SidebarFooter>
     </Sidebar>

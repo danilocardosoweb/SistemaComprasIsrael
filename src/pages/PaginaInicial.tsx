@@ -176,8 +176,15 @@ const PaginaInicial = () => {
       <header className="bg-purple-900 text-white py-3 px-4 md:px-6 lg:px-8 sticky top-0 z-50 shadow-md">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
           <div className="flex items-center space-x-2">
-            <Heart className="h-6 w-6 text-purple-300" />
-            <span className="font-bold text-lg hidden sm:inline">Geração Israel</span>
+            <img 
+              src="/Image/logo_Sem_Fundo.png" 
+              alt="Logo Geração Israel" 
+              className="h-8 w-auto" 
+            />
+            <div className="hidden sm:flex flex-col">
+              <span className="font-bold text-lg">Geração Israel</span>
+              <span className="text-xs text-purple-200">Sistema de gerenciamento de Reservas</span>
+            </div>
           </div>
           
           <div className="flex items-center space-x-4">

@@ -1,5 +1,7 @@
 # Log de Alterações - Divino Vendas App
 
+[21/05/2025 14:00] - [interface] - [Substituição do ícone pelo logo sem fundo e alteração do texto para "Sistema de gerenciamento de Reservas"] - [Danilo Cardoso]
+
 [21/05/2025 13:55] - [geral] - [Remoção de referências ao Lovable e adição do logo da Geração Israel] - [Danilo Cardoso]
 
 [21/05/2025 13:40] - [src/pages] - [Adição de pop-up de confirmação de reserva e campo Geração obrigatório] - [Usuário]
