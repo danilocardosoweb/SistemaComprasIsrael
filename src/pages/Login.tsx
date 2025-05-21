@@ -67,11 +67,15 @@ const Login = () => {
       <Card className="w-full max-w-md shadow-lg">
         <CardHeader className="space-y-1 text-center">
           <div className="flex justify-center mb-2">
-            <ShoppingCart size={40} className="text-purple-600" />
+            <img 
+              src="/Image/logo_Sem_Fundo.png" 
+              alt="Logo Geração Israel" 
+              className="h-14 w-auto" 
+            />
           </div>
           <CardTitle className="text-2xl font-bold">Geração Israel</CardTitle>
           <CardDescription>
-            Sistema de gerenciamento de vendas para igrejas
+            Sistema de gerenciamento de Reservas
           </CardDescription>
         </CardHeader>
         <CardContent>
