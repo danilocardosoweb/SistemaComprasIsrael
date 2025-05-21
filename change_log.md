@@ -1,5 +1,7 @@
 # Log de Alterações - Divino Vendas App
 
+[21/05/2025 13:55] - [geral] - [Remoção de referências ao Lovable e adição do logo da Geração Israel] - [Danilo Cardoso]
+
 [21/05/2025 13:40] - [src/pages] - [Adição de pop-up de confirmação de reserva e campo Geração obrigatório] - [Usuário]
 
 [21/05/2025 13:27] - [database] - [Adição das colunas email, geracao, observacoes e tipo à tabela vendas] - [Usuário]

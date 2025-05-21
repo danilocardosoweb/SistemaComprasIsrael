@@ -1,73 +1,58 @@
-# Welcome to your Lovable project
+# Sistema de Reservas - Geração Israel
 
-## Project info
+## Sobre o Projeto
 
-**URL**: https://lovable.dev/projects/a2cb0163-fc7e-428a-9d56-88b33fdab8a9
+Este sistema foi desenvolvido para a Geração Israel da Igreja Batista Vida Nova Hortolândia, com o objetivo de gerenciar vendas e reservas de produtos para eventos e congressos.
 
-## How can I edit this code?
+![Logo Geração Israel](/public/Image/logo_Com_Fundo.png)
 
-There are several ways of editing your application.
+## Funcionalidades
 
-**Use Lovable**
+- **Reserva de Produtos**: Permite que os clientes reservem produtos antes de efetuar o pagamento
+- **Controle de Estoque**: Atualização automática do estoque após vendas e reservas
+- **Gestão de Vendas**: Interface administrativa para gerenciar vendas e reservas
+- **Comprovantes**: Geração de comprovantes de venda para compartilhamento
+- **Banner Promocional**: Banner interativo para divulgação de eventos especiais
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/a2cb0163-fc7e-428a-9d56-88b33fdab8a9) and start prompting.
+## Tecnologias Utilizadas
 
-Changes made via Lovable will be committed automatically to this repo.
+Este projeto foi construído com:
 
-**Use your preferred IDE**
+- **Vite**: Ferramenta de build rápida para desenvolvimento
+- **TypeScript**: Linguagem tipada para maior segurança
+- **React**: Biblioteca para construção de interfaces
+- **Supabase**: Backend como serviço para banco de dados e autenticação
+- **Shadcn/ui**: Componentes de UI reutilizáveis
+- **Tailwind CSS**: Framework CSS para estilização rápida
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+## Como Executar o Projeto
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+Para executar este projeto localmente, siga estes passos:
 
-Follow these steps:
+```bash
+# 1. Clone o repositório
+git clone https://github.com/danilocardosoweb/SistemaComprasIsrael.git
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+# 2. Acesse a pasta do projeto
+cd SistemaComprasIsrael
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+# 3. Instale as dependências
+npm install
 
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# 4. Inicie o servidor de desenvolvimento
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+## Estrutura do Projeto
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+- **/src**: Código-fonte da aplicação
+  - **/components**: Componentes React reutilizáveis
+  - **/contexts**: Contextos React para gerenciamento de estado
+  - **/hooks**: Hooks personalizados
+  - **/lib**: Bibliotecas e configurações
+  - **/pages**: Páginas da aplicação
+- **/public**: Arquivos estáticos (imagens, ícones)
 
-**Use GitHub Codespaces**
+## Desenvolvido por
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/a2cb0163-fc7e-428a-9d56-88b33fdab8a9) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+Desenvolvido com ❤️ por Danilo Cardoso para a Geração Israel.
