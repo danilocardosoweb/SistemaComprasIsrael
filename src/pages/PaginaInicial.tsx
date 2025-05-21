@@ -42,6 +42,8 @@ const PaginaInicial = () => {
     telefone: "",
     email: "",
     geracao: "",
+    formaPagamento: "",
+    comprovantePagamento: null as File | null,
     observacoes: ""
   });
   const { toast } = useToast();
@@ -89,11 +91,48 @@ const PaginaInicial = () => {
     setDadosReserva(prev => ({ ...prev, [name]: value }));
   };
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const file = e.target.files[0];
+      // Verificar se o arquivo é uma imagem ou PDF
+      if (file.type.startsWith('image/') || file.type === 'application/pdf') {
+        // Verificar se o tamanho do arquivo é menor que 5MB
+        if (file.size <= 5 * 1024 * 1024) {
+          setDadosReserva(prev => ({ ...prev, comprovantePagamento: file }));
+        } else {
+          toast({
+            title: "Arquivo muito grande",
+            description: "O comprovante deve ter no máximo 5MB.",
+            variant: "destructive",
+          });
+          e.target.value = '';
+        }
+      } else {
+        toast({
+          title: "Formato inválido",
+          description: "O comprovante deve ser uma imagem (JPG, PNG) ou PDF.",
+          variant: "destructive",
+        });
+        e.target.value = '';
+      }
+    }
+  };
+
   const handleEnviarReserva = async () => {
-    if (!dadosReserva.nome || !dadosReserva.telefone || !dadosReserva.geracao) {
+    if (!dadosReserva.nome || !dadosReserva.telefone || !dadosReserva.geracao || !dadosReserva.formaPagamento) {
       toast({
         title: "Campos obrigatórios",
-        description: "Por favor, preencha seu nome, telefone e geração para continuar.",
+        description: "Por favor, preencha seu nome, telefone, geração e forma de pagamento para continuar.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // Verificar se o comprovante de pagamento foi anexado para pagamentos PIX
+    if (dadosReserva.formaPagamento === 'pix' && !dadosReserva.comprovantePagamento) {
+      toast({
+        title: "Comprovante obrigatório",
+        description: "Por favor, anexe o comprovante de pagamento para pagamentos via PIX.",
         variant: "destructive",
       });
       return;
@@ -118,18 +157,22 @@ const PaginaInicial = () => {
     setEnviandoReserva(true);
 
     try {
-      // Registrar a reserva no banco de dados
-      await api.reservas.criar({
+      // Preparar os dados para a API
+      const dadosAPI: any = {
         nome: dadosReserva.nome,
         telefone: dadosReserva.telefone,
         email: dadosReserva.email || undefined,
         geracao: dadosReserva.geracao,  // Agora é obrigatório
+        forma_pagamento: dadosReserva.formaPagamento, // Campo obrigatório de forma de pagamento
         observacoes: dadosReserva.observacoes || undefined,
         produto_id: produtoSelecionado.id,
         produto_nome: produtoSelecionado.nome,
         preco_unitario: produtoSelecionado.preco,
         quantidade: 1 // Por padrão, reservamos apenas 1 unidade
-      });
+      };
+      
+      // Registrar a reserva no banco de dados
+      await api.reservas.criar(dadosAPI);
       
       toast({
         title: "Reserva realizada com sucesso!",
@@ -158,6 +201,8 @@ const PaginaInicial = () => {
         telefone: "",
         email: "",
         geracao: "",
+        formaPagamento: "",
+        comprovantePagamento: null,
         observacoes: ""
       });
     } catch (error: any) {
@@ -294,7 +339,7 @@ const PaginaInicial = () => {
                 </span>
                 <h1 className="text-4xl md:text-5xl font-bold tracking-tight leading-tight text-white drop-shadow-md">
                   Sistema de Reservas <br />
-                  <span className="text-yellow-300 font-extrabold">Geração Israel</span>
+                  <span className="text-yellow-300 font-extrabold">Rede de Casais</span>
                 </h1>
               </div>
               
@@ -307,12 +352,12 @@ const PaginaInicial = () => {
             
             <div className="md:w-1/2 flex justify-center">
               <div className="relative w-56 h-56 md:w-72 md:h-72 bg-purple-300 bg-opacity-20 rounded-full flex items-center justify-center overflow-hidden shadow-2xl border-4 border-purple-300/30">
-                <div className="absolute inset-2 rounded-full overflow-hidden bg-purple-950 flex items-center justify-center border border-purple-400/30">
+                <div className="absolute inset-2 rounded-full overflow-hidden bg-white flex items-center justify-center border border-purple-400/30">
                   {/* Logo da Geração Israel */}
                   <img 
-                    src="/Image/logo_Sem_Fundo.png" 
+                    src="/Image/Logo_Sim_Lema.png" 
                     alt="Logo Geração Israel" 
-                    className="w-4/5 h-4/5 object-contain"
+                    className="w-full h-full object-contain p-2"
                     onError={(e) => {
                       // Fallback para o texto GI caso a imagem não carregue
                       e.currentTarget.style.display = 'none';
@@ -345,18 +390,7 @@ const PaginaInicial = () => {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <div>
-            <Tabs value={categoriaAtiva} onValueChange={setCategoriaAtiva} className="w-full">
-              <TabsList className="w-full">
-                <TabsTrigger value="todas" className="flex-1">Todas</TabsTrigger>
-                {categorias.map((categoria) => (
-                  <TabsTrigger key={categoria} value={categoria} className="flex-1">
-                    {categoria}
-                  </TabsTrigger>
-                ))}
-              </TabsList>
-            </Tabs>
-          </div>
+          {/* Elemento de abas de categorias removido conforme solicitado */}
         </div>
       </div>
 
@@ -603,6 +637,51 @@ const PaginaInicial = () => {
                       </SelectContent>
                     </Select>
                   </div>
+                </div>
+                
+                <div className="grid gap-1.5">
+                  <Label htmlFor="formaPagamento" className="flex items-center text-sm font-medium">
+                    <ShoppingCart className="mr-2 h-4 w-4 text-purple-600" />
+                    Forma de Pagamento *
+                  </Label>
+                  <Select 
+                    value={dadosReserva.formaPagamento} 
+                    onValueChange={(value) => setDadosReserva({...dadosReserva, formaPagamento: value})}
+                  >
+                    <SelectTrigger id="formaPagamento" className="border-gray-300">
+                      <SelectValue placeholder="Selecione a forma de pagamento" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="pix">PIX</SelectItem>
+                      <SelectItem value="cartao_credito">Cartão de Crédito</SelectItem>
+                      <SelectItem value="cartao_debito">Cartão de Débito</SelectItem>
+                      <SelectItem value="dinheiro">Dinheiro</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="grid gap-1.5">
+                  <Label htmlFor="comprovantePagamento" className="flex items-center text-sm font-medium">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2 text-purple-600"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                    Comprovante de Pagamento {dadosReserva.formaPagamento === 'pix' && '*'}
+                  </Label>
+                  <div className="flex items-center space-x-2">
+                    <Input
+                      id="comprovantePagamento"
+                      name="comprovantePagamento"
+                      type="file"
+                      accept="image/*,.pdf"
+                      onChange={handleFileChange}
+                      className="border-gray-300 flex-1"
+                    />
+                    {dadosReserva.comprovantePagamento && (
+                      <div className="text-xs text-green-600 flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-1"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        Arquivo selecionado
+                      </div>
+                    )}
+                  </div>
+                  <p className="text-xs text-gray-500">Aceita imagens (JPG, PNG) ou PDF. Máx: 5MB.</p>
                 </div>
                 
                 <div className="grid gap-1.5">
