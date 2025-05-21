@@ -68,7 +68,7 @@ const Login = () => {
         <CardHeader className="space-y-1 text-center">
           <div className="flex justify-center mb-2">
             <img 
-              src="/Image/logo_Sem_Fundo.png" 
+              src="/Image/logo_Com_Fundo.png" 
               alt="Logo Geração Israel" 
               className="h-14 w-auto" 
             />
