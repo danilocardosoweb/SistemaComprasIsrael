@@ -219,19 +219,22 @@ const PaginaInicial = () => {
           if (urlComprovante) {
             console.log('Upload bem-sucedido, atualizando venda com URL:', urlComprovante);
             try {
+              // Garantir que o tipo correto seja passado para a função atualizar
               await api.vendas.atualizar(reserva.id, {
                 comprovante_url: urlComprovante,
                 // Atualizar também o status de pagamento para 'Feito (pago)' se tiver comprovante
                 status_pagamento: 'Feito (pago)'
               });
               
-              console.log('Venda atualizada com sucesso com o comprovante');
+              // Verificar se a atualização foi bem-sucedida
+              const vendaAtualizada = await api.vendas.obter(reserva.id);
+              console.log('Venda atualizada com sucesso com o comprovante:', vendaAtualizada.comprovante_url);
             } catch (erroAtualizacao) {
               console.error('Erro ao atualizar venda com comprovante:', erroAtualizacao);
               toast({
                 title: "Comprovante enviado, mas não vinculado",
                 description: "O comprovante foi enviado, mas houve um problema ao vinculá-lo à sua reserva. O administrador será notificado.",
-                variant: "warning",
+                variant: "destructive",
               });
             }
           } else {
@@ -240,7 +243,7 @@ const PaginaInicial = () => {
             toast({
               title: "Reserva criada, mas comprovante não enviado",
               description: "Sua reserva foi registrada, mas houve um problema ao enviar o comprovante. Por favor, envie-o diretamente pelo WhatsApp para (11) 99999-9999.",
-              variant: "warning",
+              variant: "destructive",
             });
           }
         } catch (erroUpload) {
@@ -249,7 +252,7 @@ const PaginaInicial = () => {
           toast({
             title: "Reserva criada, mas comprovante não enviado",
             description: "Sua reserva foi registrada, mas houve um problema ao enviar o comprovante. Por favor, envie-o diretamente pelo WhatsApp para (11) 99999-9999.",
-            variant: "warning",
+            variant: "destructive",
           });
         }
       }
