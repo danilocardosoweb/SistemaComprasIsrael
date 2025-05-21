@@ -187,8 +187,8 @@ const NovaVenda = () => {
       const totalVenda = calcularTotal();
       const vendaData: any = {
         // Garantir que a data seja salva corretamente no fuso horário local
-        // Usamos a data atual no formato yyyy-MM-dd sem conversão de fuso horário
-        data_venda: new Date().toISOString().split('T')[0],
+        // Usamos a data atual no formato yyyy-MM-dd considerando o fuso horário local
+        data_venda: format(new Date(), 'yyyy-MM-dd'),  // Usando date-fns para formatar no fuso horário local
         cliente_id: null,
         cliente_nome: cliente,
         telefone: telefone,

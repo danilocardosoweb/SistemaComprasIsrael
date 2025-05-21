@@ -10,14 +10,15 @@ import {
   SidebarGroup,
   SidebarGroupContent
 } from "@/components/ui/sidebar";
-import { Calendar, Star, Package, PackageOpen, ShoppingCart, Users } from "lucide-react";
+import { Calendar, Home, LayoutDashboard, Package, PackageOpen, ShoppingCart, Users } from "lucide-react";
 import { Link } from "react-router-dom";
 // Importando o logo sem fundo
 import logoSemFundo from "/Image/logo_Sem_Fundo.png";
 
 export function AppSidebar() {
   const menuItems = [
-    { icon: Star, label: "Inicio", to: "/" },
+    { icon: Home, label: "Página Inicial", to: "/" },
+    { icon: LayoutDashboard, label: "Dashboard", to: "/dashboard" },
     { icon: Package, label: "Produtos", to: "/produtos" },
     { icon: ShoppingCart, label: "Vendas", to: "/vendas" },
     { icon: Users, label: "Clientes", to: "/clientes" },

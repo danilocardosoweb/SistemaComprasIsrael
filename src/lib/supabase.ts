@@ -10,18 +10,26 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 // Tipos para as tabelas do Supabase
 export type Geracao = string;
 
+// Lista de gerações disponíveis na igreja
 export const GERACOES = [
-  'Israel',
   'Atos',
   'Efraim',
-  'Zoe',
+  'Israel',
   'José',
   'Josué',
   'Kairós',
-  'Zion',
+  'Levi',
+  'Moriá',
+  'Rafah',
   'Samuel',
-  'Moriá'
-] as const;
+  'Zion',
+  'Zoe',
+  'Prs. Noboyuki e Samara',
+  'Vida Nova Amanda',
+  'Vida Nova Socorro',
+  'Outras igrejas',
+  'Não tenho Geração'
+];
 
 export type Cliente = {
   id: string;
@@ -41,10 +49,13 @@ export type Produto = {
   estoque: number;
   descricao?: string;
   categoria?: string;
+  imagem_url?: string;
   created_at: string;
 };
 
 export type StatusPagamento = 'Pendente' | 'Feito (pago)' | 'Cancelado' | 'Ofertado';
+
+export type StatusReserva = 'Pendente' | 'Confirmada' | 'Cancelada';
 
 export type StatusVenda = 'Pendente' | 'Finalizada' | 'Cancelada';
 
@@ -61,6 +72,10 @@ export type Venda = {
   comprovante_url?: string | null;
   data_venda: string;
   created_at: string;
+  email?: string;
+  geracao?: string;
+  observacoes?: string;
+  tipo?: 'venda' | 'reserva';
 };
 
 export type ItemVenda = {
@@ -75,6 +90,122 @@ export type ItemVenda = {
 
 // Funções de API para interagir com o Supabase
 export const api = {
+  // Reservas
+  reservas: {
+    criar: async (dadosReserva: {
+      nome: string;
+      telefone: string;
+      email?: string;
+      geracao?: string;
+      observacoes?: string;
+      produto_id: string;
+      produto_nome: string;
+      preco_unitario: number;
+      quantidade: number;
+    }) => {
+      // Verificar estoque disponível
+      const { data: produto, error: erroConsulta } = await supabase
+        .from('produtos')
+        .select('estoque')
+        .eq('id', dadosReserva.produto_id)
+        .single();
+      
+      if (erroConsulta) throw erroConsulta;
+      
+      if ((produto as Produto).estoque < dadosReserva.quantidade) {
+        throw new Error('Estoque insuficiente para esta reserva');
+      }
+      
+      // Criar a venda (reserva)
+      const venda: Omit<Venda, 'id' | 'created_at'> = {
+        cliente_nome: dadosReserva.nome,
+        telefone: dadosReserva.telefone,
+        email: dadosReserva.email,
+        geracao: dadosReserva.geracao,
+        observacoes: dadosReserva.observacoes,
+        total: dadosReserva.preco_unitario * dadosReserva.quantidade,
+        forma_pagamento: 'Pendente',
+        status_pagamento: 'Pendente',
+        status: 'Pendente',
+        data_venda: new Date().toISOString(),
+        tipo: 'reserva'
+      };
+      
+      // Criar o item da venda
+      const item: Omit<ItemVenda, 'id' | 'venda_id'> = {
+        produto_id: dadosReserva.produto_id,
+        produto_nome: dadosReserva.produto_nome,
+        quantidade: dadosReserva.quantidade,
+        preco_unitario: dadosReserva.preco_unitario,
+        subtotal: dadosReserva.preco_unitario * dadosReserva.quantidade
+      };
+      
+      // Usar a função existente para criar a venda e os itens
+      const novaReserva = await api.vendas.criar(venda, [item]);
+      
+      return novaReserva;
+    },
+    
+    listar: async () => {
+      const { data, error } = await supabase
+        .from('vendas')
+        .select('*')
+        .eq('tipo', 'reserva')
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      return data as Venda[];
+    },
+    
+    confirmar: async (id: string) => {
+      const { data, error } = await supabase
+        .from('vendas')
+        .update({
+          status_pagamento: 'Feito (pago)',
+          status: 'Finalizada'
+        })
+        .eq('id', id)
+        .select();
+      
+      if (error) throw error;
+      return data[0] as Venda;
+    },
+    
+    cancelar: async (id: string) => {
+      // Primeiro, obtemos os itens da reserva
+      const { data: itens, error: erroItens } = await supabase
+        .from('itens_venda')
+        .select('*')
+        .eq('venda_id', id);
+      
+      if (erroItens) throw erroItens;
+      
+      // Atualizar o status da reserva
+      const { data, error } = await supabase
+        .from('vendas')
+        .update({
+          status_pagamento: 'Cancelado',
+          status: 'Cancelada'
+        })
+        .eq('id', id)
+        .select();
+      
+      if (error) throw error;
+      
+      // Restaurar o estoque dos produtos
+      for (const item of itens) {
+        try {
+          // Devolver a quantidade ao estoque (valor negativo)
+          await api.produtos.atualizarEstoque(item.produto_id, -item.quantidade);
+        } catch (erro) {
+          console.error('Erro ao restaurar estoque:', erro);
+        }
+      }
+      
+      return data[0] as Venda;
+    }
+  },
+  
   // Clientes
   clientes: {
     listar: async () => {
