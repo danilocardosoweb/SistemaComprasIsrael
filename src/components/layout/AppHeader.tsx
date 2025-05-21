@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Menu } from "lucide-react";
 // Importando o logo com fundo
-import logoComFundo from "/Image/logo_Com_Fundo.png";
+import logoComFundo from "/Image/Logo_Sim_Branco_Mini.png";
 
 interface AppHeaderProps {
   toggleSidebar: () => void;

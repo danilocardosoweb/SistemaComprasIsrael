@@ -370,7 +370,7 @@ const PaginaInicial = () => {
                   title="Clique para ver no mapa"
                 >
                   <MapPin className="h-4 w-4 text-yellow-300 mr-2" />
-                  <span>Igreja Batista Vida Nova</span>
+                  <span>Igreja Vida Nova Hortolândia</span>
                 </div>
               </div>
             </div>
@@ -419,7 +419,10 @@ const PaginaInicial = () => {
                 </span>
                 <h1 className="text-4xl md:text-5xl font-bold tracking-tight leading-tight text-white drop-shadow-md">
                   <span className="bg-gradient-to-r from-yellow-300 to-yellow-500 text-transparent bg-clip-text">Sistema de Reservas</span>
-                  <span className="block mt-2 text-2xl md:text-3xl font-medium text-white md:text-black">Congresso de Famílias 2025</span>
+                  <span 
+                    className="block mt-2 text-2xl md:text-3xl font-medium text-white md:text-black"
+                    style={{ textShadow: '2px 2px 4px rgba(0, 0, 0, 0.5), 0 0 10px rgba(0, 0, 0, 0.3)' }}
+                  >Congresso de Famílias 2025</span>
                 </h1>
               </div>
               
@@ -428,7 +431,7 @@ const PaginaInicial = () => {
               {/* Botões removidos conforme solicitado */}
             </div>
             
-            <div className="md:w-1/2 flex justify-center">
+            <div className="md:w-1/2 flex justify-center -mt-10 sm:mt-0">
               <div className="relative w-56 h-56 md:w-72 md:h-72 bg-purple-300 bg-opacity-20 rounded-full flex items-center justify-center overflow-hidden shadow-2xl border-4 border-purple-300/30">
                 <div className="absolute inset-2 rounded-full overflow-hidden bg-white flex items-center justify-center border border-purple-400/30">
                   {/* Logo da Rede de Casais */}
@@ -840,7 +843,7 @@ const PaginaInicial = () => {
                   <h3 className="text-sm font-medium text-purple-800">Atenção! Forma de Pagamento</h3>
                   <div className="mt-2 text-sm text-purple-700 space-y-1">
                     <p>Os pagamentos serão aceitos somente através das seguintes opções:</p>
-                    <p className="flex items-center">✅ <span className="ml-1">PIX no nome da Igreja Batista Vida Nova Hortolândia</span></p>
+                    <p className="flex items-center">✅ <span className="ml-1">PIX no nome da Igreja Vida Nova Hortolândia</span></p>
                     <p className="flex items-center">✅ <span className="ml-1">Maquininhas de cartão disponíveis dentro da igreja</span></p>
                     
                     <p className="mt-2">Após realizar o pagamento via PIX, envie o comprovante para o número:</p>
