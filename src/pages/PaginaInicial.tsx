@@ -348,7 +348,8 @@ const PaginaInicial = () => {
                   Vida Nova Hortolândia
                 </span>
                 <h1 className="text-4xl md:text-5xl font-bold tracking-tight leading-tight text-white drop-shadow-md">
-                  Sistema de Reservas
+                  <span className="bg-gradient-to-r from-yellow-300 to-yellow-500 text-transparent bg-clip-text">Sistema de Reservas</span>
+                  <span className="block mt-2 text-2xl md:text-3xl font-medium text-purple-200">Congresso de Famílias 2025</span>
                 </h1>
               </div>
               
