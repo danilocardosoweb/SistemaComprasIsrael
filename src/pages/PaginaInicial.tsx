@@ -353,15 +353,15 @@ const PaginaInicial = () => {
             <div className="md:w-1/2 flex justify-center">
               <div className="relative w-56 h-56 md:w-72 md:h-72 bg-purple-300 bg-opacity-20 rounded-full flex items-center justify-center overflow-hidden shadow-2xl border-4 border-purple-300/30">
                 <div className="absolute inset-2 rounded-full overflow-hidden bg-white flex items-center justify-center border border-purple-400/30">
-                  {/* Logo da Geração Israel */}
+                  {/* Logo da Rede de Casais */}
                   <img 
                     src="/Image/Logo_Sim_Lema.png" 
-                    alt="Logo Geração Israel" 
+                    alt="Logo Rede de Casais" 
                     className="w-full h-full object-contain p-2"
                     onError={(e) => {
-                      // Fallback para o texto GI caso a imagem não carregue
+                      // Fallback para o texto SIM caso a imagem não carregue
                       e.currentTarget.style.display = 'none';
-                      e.currentTarget.parentElement.innerHTML = '<div class="text-7xl font-extrabold text-yellow-300 drop-shadow-lg">GI</div>';
+                      e.currentTarget.parentElement.innerHTML = '<div class="text-6xl font-extrabold text-black drop-shadow-lg">SIM</div>';
                     }}
                   />
                 </div>
