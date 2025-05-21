@@ -233,12 +233,12 @@ const PaginaInicial = () => {
         <div className="max-w-7xl mx-auto flex justify-between items-center">
           <div className="flex items-center space-x-2">
             <img 
-              src="/Image/logo_Sem_Fundo.png" 
-              alt="Logo Geração Israel" 
+              src="/Image/Logo_Sim_Branco.png" 
+              alt="Logo Rede de Casais" 
               className="h-8 w-auto" 
             />
             <div className="hidden sm:flex flex-col">
-              <span className="font-bold text-lg">Geração Israel</span>
+              <span className="font-bold text-lg">Rede de Casais</span>
               <span className="text-xs text-purple-200">Sistema de gerenciamento de Reservas</span>
             </div>
           </div>
@@ -365,7 +365,7 @@ const PaginaInicial = () => {
                 <div className="absolute inset-2 rounded-full overflow-hidden bg-white flex items-center justify-center border border-purple-400/30">
                   {/* Logo da Rede de Casais */}
                   <img 
-                    src="/Image/Logo_Sim_Branco.png" 
+                    src="/Image/Logo_Sim_Lema.png" 
                     alt="Logo Rede de Casais" 
                     className="w-full h-full object-contain p-2"
                     onError={(e) => {
