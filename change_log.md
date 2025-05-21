@@ -1,5 +1,7 @@
 # Log de Alterações - Divino Vendas App
 
+[21/05/2025 15:09] - [interface] - [Adição de footer na página inicial com informações de contato e links rápidos] - [Danilo Cardoso]
+
 [21/05/2025 15:02] - [correção] - [Correção do caminho da imagem do QR Code para "QR code.png"] - [Danilo Cardoso]
 
 [21/05/2025 14:50] - [funcionalidade] - [Adição de modal com mapa interativo para o endereço do evento] - [Danilo Cardoso]

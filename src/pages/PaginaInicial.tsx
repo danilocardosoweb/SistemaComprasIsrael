@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Search, ShoppingCart, Phone, User, Mail, Heart, ArrowRight, Check, Loader2, Users, X, ZoomIn, Calendar, MapPin, Star } from "lucide-react";
+import { Search, ShoppingCart, Phone, User, Mail, Heart, ArrowRight, Check, Loader2, Users, X, ZoomIn, Calendar, MapPin, Star, Package, Mail as MailIcon } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { api, Produto, GERACOES } from "@/lib/supabase";
@@ -732,22 +732,32 @@ const PaginaInicial = () => {
 
       {/* Modal de QR Code */}
       <Dialog open={mostrarQRCode} onOpenChange={setMostrarQRCode}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>QR Code do Evento</DialogTitle>
-            <DialogDescription>
+        <DialogContent className="sm:max-w-md bg-gradient-to-b from-purple-50 to-white">
+          <DialogHeader className="text-center">
+            <DialogTitle className="text-2xl font-bold text-purple-800">QR Code do Evento</DialogTitle>
+            <DialogDescription className="text-purple-700">
               Escaneie o QR Code para mais informações sobre o Congresso de Famílias 2025.
             </DialogDescription>
           </DialogHeader>
-          <div className="flex justify-center p-6">
-            <img 
-              src="/Image/QR code.png" 
-              alt="QR Code do Evento" 
-              className="w-64 h-64 object-contain"
-            />
+          <div className="flex flex-col items-center p-6">
+            <div className="bg-white p-4 rounded-xl shadow-md border-2 border-yellow-300 transform transition-transform hover:scale-105 duration-300">
+              <img 
+                src="/Image/QR code.png" 
+                alt="QR Code do Evento" 
+                className="w-64 h-64 object-contain"
+              />
+            </div>
           </div>
-          <DialogFooter className="sm:justify-center">
-            <Button type="button" variant="secondary" onClick={() => setMostrarQRCode(false)}>
+          <DialogFooter className="flex flex-col sm:flex-row sm:justify-between border-t pt-3">
+            <div className="flex items-center text-sm text-purple-600 mb-3 sm:mb-0">
+              <Calendar className="h-4 w-4 mr-1" />
+              <span>Maio de 2025</span>
+            </div>
+            <Button 
+              type="button" 
+              className="bg-purple-600 hover:bg-purple-700 text-white" 
+              onClick={() => setMostrarQRCode(false)}
+            >
               Fechar
             </Button>
           </DialogFooter>
@@ -789,6 +799,87 @@ const PaginaInicial = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Footer */}
+      <footer className="mt-16 bg-gradient-to-r from-purple-900 to-purple-800 text-white py-10 rounded-t-lg shadow-lg">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {/* Coluna 1 - Logo e Informações */}
+            <div className="flex flex-col items-center md:items-start">
+              <div className="flex items-center mb-4">
+                <img 
+                  src="/Image/logo_Sem_Fundo.png" 
+                  alt="Logo Geração Israel" 
+                  className="h-12 w-auto mr-2" 
+                />
+                <div>
+                  <h3 className="font-bold text-lg">Geração Israel</h3>
+                  <p className="text-xs text-purple-200">Sistema de Reservas</p>
+                </div>
+              </div>
+              <p className="text-sm text-purple-200 text-center md:text-left mb-4">
+                Facilitando o acesso aos produtos exclusivos da Geração Israel para toda a comunidade.
+              </p>
+              <div className="flex space-x-3">
+                <a href="https://www.instagram.com/geracaoisrael" target="_blank" rel="noopener noreferrer" className="bg-white/10 p-2 rounded-full hover:bg-white/20 transition-colors">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>
+                </a>
+              </div>
+            </div>
+
+            {/* Coluna 2 - Links Rápidos */}
+            <div className="text-center md:text-left">
+              <h3 className="font-bold text-lg mb-4 border-b border-purple-700 pb-2">Links Rápidos</h3>
+              <ul className="space-y-2">
+                <li>
+                  <a href="#produtos" className="text-purple-200 hover:text-white transition-colors flex items-center justify-center md:justify-start">
+                    <Package className="h-4 w-4 mr-2" /> Produtos
+                  </a>
+                </li>
+                <li>
+                  <a href="#" onClick={() => window.scrollTo({top: document.body.scrollHeight, behavior: 'smooth'})} className="text-purple-200 hover:text-white transition-colors flex items-center justify-center md:justify-start">
+                    <ShoppingCart className="h-4 w-4 mr-2" /> Como Reservar
+                  </a>
+                </li>
+                <li>
+                  <a href="#" onClick={() => setMostrarQRCode(true)} className="text-purple-200 hover:text-white transition-colors flex items-center justify-center md:justify-start">
+                    <Calendar className="h-4 w-4 mr-2" /> Eventos
+                  </a>
+                </li>
+                <li>
+                  <a href="#" onClick={() => setMostrarMapa(true)} className="text-purple-200 hover:text-white transition-colors flex items-center justify-center md:justify-start">
+                    <MapPin className="h-4 w-4 mr-2" /> Localização
+                  </a>
+                </li>
+              </ul>
+            </div>
+
+            {/* Coluna 3 - Contato */}
+            <div className="text-center md:text-left">
+              <h3 className="font-bold text-lg mb-4 border-b border-purple-700 pb-2">Contato</h3>
+              <ul className="space-y-3">
+                <li className="flex items-center justify-center md:justify-start">
+                  <Phone className="h-4 w-4 mr-2 text-yellow-300" />
+                  <span>(19) 99165-9221</span>
+                </li>
+                <li className="flex items-center justify-center md:justify-start">
+                  <MailIcon className="h-4 w-4 mr-2 text-yellow-300" />
+                  <span>contato@geracaoisrael.com.br</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <div className="mt-8 pt-4 border-t border-purple-700 flex flex-col md:flex-row justify-between items-center">
+            <p className="text-sm text-purple-300 mb-2 md:mb-0">
+              &copy; {new Date().getFullYear()} Geração Israel. Todos os direitos reservados.
+            </p>
+            <p className="text-xs text-purple-400">
+              Desenvolvido com ❤️ por <a href="https://github.com/danilocardosoweb" target="_blank" rel="noopener noreferrer" className="text-yellow-300 hover:underline">Danilo Cardoso</a>
+            </p>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 };
