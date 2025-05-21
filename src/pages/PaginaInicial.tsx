@@ -31,7 +31,7 @@ const PaginaInicial = () => {
   const [produtoSelecionado, setProdutoSelecionado] = useState<Produto | null>(null);
   const [showReservaDialog, setShowReservaDialog] = useState(false);
   const [enviandoReserva, setEnviandoReserva] = useState(false);
-  // Estado para controlar a visualização ampliada da imagem
+  // Estado para controlar a visualização 
   const [imagemAmpliada, setImagemAmpliada] = useState<string | null>(null);
   const [mostrarQRCode, setMostrarQRCode] = useState(false);
   const [mostrarMapa, setMostrarMapa] = useState(false);
@@ -46,6 +46,9 @@ const PaginaInicial = () => {
     comprovantePagamento: null as File | null,
     observacoes: ""
   });
+  // CNPJ para pagamento PIX
+  const cnpjPix = "44.319.844/0001-75";
+  const [mostrarQRCodePix, setMostrarQRCodePix] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -89,6 +92,13 @@ const PaginaInicial = () => {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setDadosReserva(prev => ({ ...prev, [name]: value }));
+    
+    // Se o campo for formaPagamento e o valor for pix, exibe o QR Code
+    if (name === "formaPagamento" && value === "pix") {
+      setMostrarQRCodePix(true);
+    } else if (name === "formaPagamento" && value !== "pix") {
+      setMostrarQRCodePix(false);
+    }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -646,18 +656,56 @@ const PaginaInicial = () => {
                   </Label>
                   <Select 
                     value={dadosReserva.formaPagamento} 
-                    onValueChange={(value) => setDadosReserva({...dadosReserva, formaPagamento: value})}
+                    onValueChange={(value) => {
+                      setDadosReserva(prev => ({ ...prev, formaPagamento: value }));
+                      if (value === "pix") {
+                        setMostrarQRCodePix(true);
+                      } else {
+                        setMostrarQRCodePix(false);
+                      }
+                    }}
                   >
                     <SelectTrigger id="formaPagamento" className="border-gray-300">
                       <SelectValue placeholder="Selecione a forma de pagamento" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="pix">PIX</SelectItem>
-                      <SelectItem value="cartao_credito">Cartão de Crédito</SelectItem>
-                      <SelectItem value="cartao_debito">Cartão de Débito</SelectItem>
                       <SelectItem value="dinheiro">Dinheiro</SelectItem>
+                      <SelectItem value="cartao">Cartão de Crédito/Débito</SelectItem>
                     </SelectContent>
                   </Select>
+                  
+                  {mostrarQRCodePix && (
+                    <div className="mt-2 p-3 bg-purple-50 rounded-md border border-purple-200">
+                      <div className="flex flex-col items-center">
+                        <h3 className="text-sm font-semibold text-purple-800 mb-1">QR Code para pagamento PIX</h3>
+                        <div className="bg-white p-2 rounded-md shadow-sm mb-2">
+                          <img 
+                            src="/Image/QR Code_VidaNova.jpg" 
+                            alt="QR Code PIX" 
+                            className="w-48 h-48 object-contain"
+                            onClick={() => window.open("/Image/QR Code_VidaNova.jpg", "_blank")}
+                          />
+                        </div>
+                        <div className="w-full">
+                          <p className="text-xs text-gray-600 mb-1">CNPJ (clique para copiar):</p>
+                          <div 
+                            className="flex items-center justify-between bg-white p-2 rounded border border-gray-300 cursor-pointer"
+                            onClick={() => {
+                              navigator.clipboard.writeText(cnpjPix);
+                              toast({
+                                title: "CNPJ copiado!",
+                                description: "O CNPJ foi copiado para a área de transferência.",
+                              });
+                            }}
+                          >
+                            <span className="text-sm font-medium">{cnpjPix}</span>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-purple-600"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
                 
                 <div className="grid gap-1.5">
