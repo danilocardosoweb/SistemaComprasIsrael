@@ -365,7 +365,7 @@ const PaginaInicial = () => {
                 <div className="absolute inset-2 rounded-full overflow-hidden bg-white flex items-center justify-center border border-purple-400/30">
                   {/* Logo da Rede de Casais */}
                   <img 
-                    src="/Image/Logo_Sim_Lema.png" 
+                    src="/Image/Logo_Sim_Branco.png" 
                     alt="Logo Rede de Casais" 
                     className="w-full h-full object-contain p-2"
                     onError={(e) => {
