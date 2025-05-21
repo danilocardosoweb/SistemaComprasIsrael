@@ -741,7 +741,7 @@ const PaginaInicial = () => {
           </DialogHeader>
           <div className="flex justify-center p-6">
             <img 
-              src="/Image/qrcode_evento.png" 
+              src="/Image/QR code.png" 
               alt="QR Code do Evento" 
               className="w-64 h-64 object-contain"
             />
