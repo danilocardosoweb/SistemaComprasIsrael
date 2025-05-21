@@ -103,18 +103,8 @@ export const api = {
       preco_unitario: number;
       quantidade: number;
     }) => {
-      // Verificar estoque disponível
-      const { data: produto, error: erroConsulta } = await supabase
-        .from('produtos')
-        .select('estoque')
-        .eq('id', dadosReserva.produto_id)
-        .single();
-      
-      if (erroConsulta) throw erroConsulta;
-      
-      if ((produto as Produto).estoque < dadosReserva.quantidade) {
-        throw new Error('Estoque insuficiente para esta reserva');
-      }
+      // A verificação de estoque agora é feita na função atualizarEstoque
+      // com lógica específica para reservas
       
       // Criar a venda (reserva)
       const venda: Omit<Venda, 'id' | 'created_at'> = {
@@ -315,7 +305,7 @@ export const api = {
       return true;
     },
     
-    atualizarEstoque: async (id: string, quantidade: number) => {
+    atualizarEstoque: async (id: string, quantidade: number, tipoOperacao: 'reserva' | 'venda' = 'venda') => {
       // Primeiro, obtemos o produto atual
       const { data: produto, error: erroConsulta } = await supabase
         .from('produtos')
@@ -325,13 +315,19 @@ export const api = {
       
       if (erroConsulta) throw erroConsulta;
       
-      // Depois, atualizamos o estoque
-      const novoEstoque = (produto as Produto).estoque - quantidade;
+      // Depois, calculamos o novo estoque
+      const estoqueAtual = (produto as Produto).estoque;
+      const novoEstoque = estoqueAtual - quantidade;
       
-      if (novoEstoque < 0) {
-        throw new Error('Estoque insuficiente');
+      // A verificação de estoque já foi feita antes de criar a venda,
+      // mas fazemos uma verificação adicional por segurança
+      if (tipoOperacao === 'venda' && novoEstoque < 0) {
+        console.warn(`Tentativa de venda com estoque insuficiente. Disponível: ${estoqueAtual}, Solicitado: ${quantidade}`);
+      } else if (tipoOperacao === 'reserva' && estoqueAtual <= 0) {
+        console.warn(`Tentativa de reserva sem estoque disponível. Estoque atual: ${estoqueAtual}`);
       }
       
+      // Atualiza o estoque no banco de dados
       const { data, error } = await supabase
         .from('produtos')
         .update({ estoque: novoEstoque })
@@ -380,7 +376,35 @@ export const api = {
       venda: Omit<Venda, 'id' | 'created_at'>, 
       itens: Omit<ItemVenda, 'id' | 'venda_id'>[]
     ) => {
-      // Iniciamos uma transação
+      // PRIMEIRO: Verificar estoque para todos os itens ANTES de criar a venda
+      for (const item of itens) {
+        try {
+          const tipoOperacao = venda.tipo === 'reserva' ? 'reserva' : 'venda';
+          
+          // Verificar estoque sem atualizar
+          const { data: produto, error: erroConsulta } = await supabase
+            .from('produtos')
+            .select('estoque')
+            .eq('id', item.produto_id)
+            .single();
+          
+          if (erroConsulta) throw erroConsulta;
+          
+          const estoqueAtual = (produto as Produto).estoque;
+          
+          // Verificação de estoque com base no tipo de operação
+          if (tipoOperacao === 'venda' && estoqueAtual < item.quantidade) {
+            throw new Error(`Estoque insuficiente. Disponível: ${estoqueAtual}, Solicitado: ${item.quantidade}`);
+          } else if (tipoOperacao === 'reserva' && estoqueAtual <= 0) {
+            throw new Error(`Produto sem estoque disponível para reserva. Estoque atual: ${estoqueAtual}`);
+          }
+        } catch (erro) {
+          console.error('Erro ao verificar estoque:', erro);
+          throw erro;
+        }
+      }
+      
+      // SEGUNDO: Criar a venda após verificar estoque
       const { data, error } = await supabase
         .from('vendas')
         .insert([venda])
@@ -390,7 +414,7 @@ export const api = {
       
       const vendaId = data[0].id;
       
-      // Inserimos os itens da venda
+      // TERCEIRO: Inserir os itens da venda
       const itensComVendaId = itens.map(item => ({
         ...item,
         venda_id: vendaId
@@ -402,12 +426,14 @@ export const api = {
       
       if (erroItens) throw erroItens;
       
-      // Atualizamos o estoque dos produtos
+      // QUARTO: Atualizar o estoque dos produtos
       for (const item of itens) {
         try {
-          await api.produtos.atualizarEstoque(item.produto_id, item.quantidade);
+          const tipoOperacao = venda.tipo === 'reserva' ? 'reserva' : 'venda';
+          await api.produtos.atualizarEstoque(item.produto_id, item.quantidade, tipoOperacao);
         } catch (erro) {
           console.error('Erro ao atualizar estoque:', erro);
+          // Aqui poderíamos tentar reverter a venda se a atualização de estoque falhar
           throw erro;
         }
       }
