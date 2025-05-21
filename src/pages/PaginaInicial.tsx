@@ -49,6 +49,7 @@ const PaginaInicial = () => {
   // CNPJ para pagamento PIX
   const cnpjPix = "44.319.844/0001-75";
   const [mostrarQRCodePix, setMostrarQRCodePix] = useState(false);
+  const [mostrarManualReserva, setMostrarManualReserva] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -182,7 +183,76 @@ const PaginaInicial = () => {
       };
       
       // Registrar a reserva no banco de dados
-      await api.reservas.criar(dadosAPI);
+      const reserva = await api.reservas.criar(dadosAPI);
+      
+      // Se tiver comprovante de pagamento, fazer upload e atualizar a venda
+      if (dadosReserva.comprovantePagamento) {
+        try {
+          console.log('Iniciando upload do comprovante...');
+          
+          // Verificar se o arquivo é válido
+          if (dadosReserva.comprovantePagamento.size === 0) {
+            throw new Error('Arquivo de comprovante vazio ou inválido');
+          }
+          
+          // Upload do comprovante com várias tentativas
+          let urlComprovante = null;
+          let tentativas = 0;
+          const maxTentativas = 2;
+          
+          while (!urlComprovante && tentativas < maxTentativas) {
+            tentativas++;
+            console.log(`Tentativa ${tentativas} de upload do comprovante`);
+            
+            try {
+              urlComprovante = await api.vendas.uploadComprovante(dadosReserva.comprovantePagamento);
+            } catch (erroTentativa) {
+              console.error(`Erro na tentativa ${tentativas}:`, erroTentativa);
+              // Aguardar um pouco antes da próxima tentativa
+              if (tentativas < maxTentativas) {
+                await new Promise(resolve => setTimeout(resolve, 1000));
+              }
+            }
+          }
+          
+          // Atualizar a venda com a URL do comprovante apenas se o upload foi bem-sucedido
+          if (urlComprovante) {
+            console.log('Upload bem-sucedido, atualizando venda com URL:', urlComprovante);
+            try {
+              await api.vendas.atualizar(reserva.id, {
+                comprovante_url: urlComprovante,
+                // Atualizar também o status de pagamento para 'Feito (pago)' se tiver comprovante
+                status_pagamento: 'Feito (pago)'
+              });
+              
+              console.log('Venda atualizada com sucesso com o comprovante');
+            } catch (erroAtualizacao) {
+              console.error('Erro ao atualizar venda com comprovante:', erroAtualizacao);
+              toast({
+                title: "Comprovante enviado, mas não vinculado",
+                description: "O comprovante foi enviado, mas houve um problema ao vinculá-lo à sua reserva. O administrador será notificado.",
+                variant: "warning",
+              });
+            }
+          } else {
+            // Informar ao usuário que o comprovante não foi enviado, mas a reserva foi criada
+            console.error('Não foi possível fazer upload do comprovante após várias tentativas');
+            toast({
+              title: "Reserva criada, mas comprovante não enviado",
+              description: "Sua reserva foi registrada, mas houve um problema ao enviar o comprovante. Por favor, envie-o diretamente pelo WhatsApp para (11) 99999-9999.",
+              variant: "warning",
+            });
+          }
+        } catch (erroUpload) {
+          console.error("Erro ao processar upload do comprovante:", erroUpload);
+          // Informar ao usuário que o comprovante não foi enviado, mas a reserva foi criada
+          toast({
+            title: "Reserva criada, mas comprovante não enviado",
+            description: "Sua reserva foi registrada, mas houve um problema ao enviar o comprovante. Por favor, envie-o diretamente pelo WhatsApp para (11) 99999-9999.",
+            variant: "warning",
+          });
+        }
+      }
       
       toast({
         title: "Reserva realizada com sucesso!",
@@ -349,7 +419,7 @@ const PaginaInicial = () => {
                 </span>
                 <h1 className="text-4xl md:text-5xl font-bold tracking-tight leading-tight text-white drop-shadow-md">
                   <span className="bg-gradient-to-r from-yellow-300 to-yellow-500 text-transparent bg-clip-text">Sistema de Reservas</span>
-                  <span className="block mt-2 text-2xl md:text-3xl font-medium text-black">Congresso de Famílias 2025</span>
+                  <span className="block mt-2 text-2xl md:text-3xl font-medium text-white md:text-black">Congresso de Famílias 2025</span>
                 </h1>
               </div>
               
@@ -925,6 +995,164 @@ const PaginaInicial = () => {
         </DialogContent>
       </Dialog>
 
+      {/* Manual de Como Reservar */}
+      <Dialog open={mostrarManualReserva} onOpenChange={setMostrarManualReserva}>
+        <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-xl flex items-center gap-2">
+              <ShoppingCart className="h-5 w-5" /> Manual de Reserva de Produtos
+            </DialogTitle>
+            <DialogDescription>
+              Siga este passo a passo para realizar sua reserva com sucesso.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-6 py-4">
+            {/* Passo 1 */}
+            <div className="space-y-2">
+              <h3 className="text-lg font-medium flex items-center gap-2">
+                <Badge className="h-6 w-6 rounded-full flex items-center justify-center">1</Badge>
+                Escolha o produto
+              </h3>
+              <div className="pl-8 space-y-2">
+                <p className="text-sm text-muted-foreground">
+                  Na página inicial, você encontrará todos os produtos disponíveis para reserva.
+                </p>
+                <div className="bg-muted p-3 rounded-md">
+                  <ul className="text-sm list-disc pl-5 space-y-1">
+                    <li>Use a barra de pesquisa para encontrar produtos específicos</li>
+                    <li>Filtre por categoria para visualizar produtos semelhantes</li>
+                    <li>Verifique se o produto está em estoque (indicado na etiqueta verde)</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+            
+            {/* Passo 2 */}
+            <div className="space-y-2">
+              <h3 className="text-lg font-medium flex items-center gap-2">
+                <Badge className="h-6 w-6 rounded-full flex items-center justify-center">2</Badge>
+                Clique em "Reservar Produto"
+              </h3>
+              <div className="pl-8 space-y-2">
+                <p className="text-sm text-muted-foreground">
+                  Ao encontrar o produto desejado, clique no botão roxo "Reservar Produto" localizado na parte inferior do card do produto.
+                </p>
+                <div className="bg-purple-100 dark:bg-purple-950/30 p-3 rounded-md">
+                  <p className="text-sm font-medium text-purple-800 dark:text-purple-300">Importante:</p>
+                  <p className="text-sm text-purple-700 dark:text-purple-400">Certifique-se de que o produto está disponível em estoque antes de tentar reservá-lo.</p>
+                </div>
+              </div>
+            </div>
+            
+            {/* Passo 3 */}
+            <div className="space-y-2">
+              <h3 className="text-lg font-medium flex items-center gap-2">
+                <Badge className="h-6 w-6 rounded-full flex items-center justify-center">3</Badge>
+                Preencha o formulário de reserva
+              </h3>
+              <div className="pl-8 space-y-2">
+                <p className="text-sm text-muted-foreground">
+                  Preencha todos os campos obrigatórios do formulário de reserva:
+                </p>
+                <div className="bg-muted p-3 rounded-md">
+                  <ul className="text-sm list-disc pl-5 space-y-1">
+                    <li><span className="font-medium">Nome completo:</span> Seu nome para identificação</li>
+                    <li><span className="font-medium">Telefone:</span> Número para contato com DDD</li>
+                    <li><span className="font-medium">E-mail:</span> Para envio da confirmação (opcional)</li>
+                    <li><span className="font-medium">Geração:</span> Selecione sua geração ou grupo</li>
+                    <li><span className="font-medium">Forma de pagamento:</span> PIX, Dinheiro ou Cartão</li>
+                    <li><span className="font-medium">Comprovante:</span> Anexe o comprovante caso já tenha realizado o pagamento</li>
+                    <li><span className="font-medium">Observações:</span> Informações adicionais (opcional)</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+            
+            {/* Passo 4 */}
+            <div className="space-y-2">
+              <h3 className="text-lg font-medium flex items-center gap-2">
+                <Badge className="h-6 w-6 rounded-full flex items-center justify-center">4</Badge>
+                Realize o pagamento
+              </h3>
+              <div className="pl-8 space-y-2">
+                <p className="text-sm text-muted-foreground">
+                  Se escolher PIX como forma de pagamento:
+                </p>
+                <div className="bg-muted p-3 rounded-md">
+                  <ul className="text-sm list-disc pl-5 space-y-1">
+                    <li>Clique no botão "Gerar QR Code PIX" para visualizar o QR Code</li>
+                    <li>Escaneie o QR Code com seu aplicativo bancário</li>
+                    <li>Ou copie a chave PIX e cole no seu aplicativo</li>
+                    <li>Realize o pagamento do valor exato do produto</li>
+                    <li>Anexe o comprovante de pagamento no formulário</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+            
+            {/* Passo 5 */}
+            <div className="space-y-2">
+              <h3 className="text-lg font-medium flex items-center gap-2">
+                <Badge className="h-6 w-6 rounded-full flex items-center justify-center">5</Badge>
+                Confirme sua reserva
+              </h3>
+              <div className="pl-8 space-y-2">
+                <p className="text-sm text-muted-foreground">
+                  Após preencher o formulário e anexar o comprovante (se aplicável):
+                </p>
+                <div className="bg-muted p-3 rounded-md">
+                  <ul className="text-sm list-disc pl-5 space-y-1">
+                    <li>Clique no botão "Reservar"</li>
+                    <li>Leia atentamente as instruções na tela de confirmação</li>
+                    <li>Clique em "Sim, confirmar reserva" para finalizar</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+            
+            {/* Passo 6 */}
+            <div className="space-y-2">
+              <h3 className="text-lg font-medium flex items-center gap-2">
+                <Badge className="h-6 w-6 rounded-full flex items-center justify-center">6</Badge>
+                Retirada do produto
+              </h3>
+              <div className="pl-8 space-y-2">
+                <p className="text-sm text-muted-foreground">
+                  Após a confirmação da reserva:
+                </p>
+                <div className="bg-muted p-3 rounded-md">
+                  <ul className="text-sm list-disc pl-5 space-y-1">
+                    <li>Sua reserva é válida por 48 horas</li>
+                    <li>Procure Danilo Cardoso ou Tatiane Cardoso da Geração Israel</li>
+                    <li>Apresente o comprovante de pagamento (se já não tiver enviado)</li>
+                    <li>Retire seu produto no local combinado</li>
+                  </ul>
+                </div>
+                <div className="bg-yellow-100 dark:bg-yellow-950/30 p-3 rounded-md mt-2">
+                  <p className="text-sm font-medium text-yellow-800 dark:text-yellow-300">Atenção:</p>
+                  <p className="text-sm text-yellow-700 dark:text-yellow-400">Caso não retire o produto no prazo de 48 horas, sua reserva poderá ser cancelada e o produto disponibilizado para outros interessados.</p>
+                </div>
+              </div>
+            </div>
+            
+            {/* Dúvidas */}
+            <div className="bg-blue-50 dark:bg-blue-950/20 p-4 rounded-md mt-4">
+              <h3 className="text-md font-medium text-blue-800 dark:text-blue-300 flex items-center gap-2">
+                <Phone className="h-4 w-4" /> Precisa de ajuda?
+              </h3>
+              <p className="text-sm text-blue-700 dark:text-blue-400 mt-1">
+                Em caso de dúvidas, entre em contato pelo WhatsApp (19) 99165-9221 ou fale diretamente com Danilo Cardoso ou Tatiane Cardoso.
+              </p>
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button onClick={() => setMostrarManualReserva(false)}>Entendi</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Footer */}
       <footer className="mt-16 bg-gradient-to-r from-purple-900 to-purple-800 text-white py-10 rounded-t-lg shadow-lg">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -943,7 +1171,7 @@ const PaginaInicial = () => {
                 </div>
               </div>
               <p className="text-sm text-purple-200 text-center md:text-left mb-4">
-                Facilitando o acesso aos produtos exclusivos da Geração Israel para toda a comunidade.
+                Facilitando o acesso aos produtos exclusivos.
               </p>
               <div className="flex space-x-3">
                 <a href="https://www.instagram.com/geracaoisrael" target="_blank" rel="noopener noreferrer" className="bg-white/10 p-2 rounded-full hover:bg-white/20 transition-colors">
@@ -962,7 +1190,7 @@ const PaginaInicial = () => {
                   </a>
                 </li>
                 <li>
-                  <a href="#" onClick={() => window.scrollTo({top: document.body.scrollHeight, behavior: 'smooth'})} className="text-purple-200 hover:text-white transition-colors flex items-center justify-center md:justify-start">
+                  <a href="#" onClick={(e) => { e.preventDefault(); setMostrarManualReserva(true); }} className="text-purple-200 hover:text-white transition-colors flex items-center justify-center md:justify-start">
                     <ShoppingCart className="h-4 w-4 mr-2" /> Como Reservar
                   </a>
                 </li>

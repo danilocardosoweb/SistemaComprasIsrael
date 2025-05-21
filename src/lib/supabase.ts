@@ -102,6 +102,7 @@ export const api = {
       produto_nome: string;
       preco_unitario: number;
       quantidade: number;
+      forma_pagamento?: string;
     }) => {
       // A verificação de estoque agora é feita na função atualizarEstoque
       // com lógica específica para reservas
@@ -114,7 +115,7 @@ export const api = {
         geracao: dadosReserva.geracao,
         observacoes: dadosReserva.observacoes,
         total: dadosReserva.preco_unitario * dadosReserva.quantidade,
-        forma_pagamento: 'Pendente',
+        forma_pagamento: dadosReserva.forma_pagamento || 'Pendente',
         status_pagamento: 'Pendente',
         status: 'Pendente',
         data_venda: new Date().toISOString(),
@@ -319,12 +320,9 @@ export const api = {
       const estoqueAtual = (produto as Produto).estoque;
       const novoEstoque = estoqueAtual - quantidade;
       
-      // A verificação de estoque já foi feita antes de criar a venda,
-      // mas fazemos uma verificação adicional por segurança
-      if (tipoOperacao === 'venda' && novoEstoque < 0) {
-        console.warn(`Tentativa de venda com estoque insuficiente. Disponível: ${estoqueAtual}, Solicitado: ${quantidade}`);
-      } else if (tipoOperacao === 'reserva' && estoqueAtual <= 0) {
-        console.warn(`Tentativa de reserva sem estoque disponível. Estoque atual: ${estoqueAtual}`);
+      // Verificação rigorosa para impedir estoque negativo
+      if (novoEstoque < 0) {
+        throw new Error(`Estoque insuficiente para ${tipoOperacao}. Disponível: ${estoqueAtual}, Solicitado: ${quantidade}`);
       }
       
       // Atualiza o estoque no banco de dados
@@ -376,15 +374,18 @@ export const api = {
       venda: Omit<Venda, 'id' | 'created_at'>, 
       itens: Omit<ItemVenda, 'id' | 'venda_id'>[]
     ) => {
-      // PRIMEIRO: Verificar estoque para todos os itens ANTES de criar a venda
+      // Criar uma lista para armazenar os produtos e seus estoques atuais
+      const produtosVerificados: {id: string; estoqueAtual: number; quantidade: number}[] = [];
+      
+      // PRIMEIRO: Verificar e reservar o estoque para todos os itens
       for (const item of itens) {
         try {
           const tipoOperacao = venda.tipo === 'reserva' ? 'reserva' : 'venda';
           
-          // Verificar estoque sem atualizar
+          // Obter o produto com bloqueio para atualização (usando o parâmetro select para minimizar dados)
           const { data: produto, error: erroConsulta } = await supabase
             .from('produtos')
-            .select('estoque')
+            .select('id, estoque')
             .eq('id', item.produto_id)
             .single();
           
@@ -395,69 +396,134 @@ export const api = {
           // Verificação de estoque com base no tipo de operação
           if (tipoOperacao === 'venda' && estoqueAtual < item.quantidade) {
             throw new Error(`Estoque insuficiente. Disponível: ${estoqueAtual}, Solicitado: ${item.quantidade}`);
-          } else if (tipoOperacao === 'reserva' && estoqueAtual <= 0) {
-            throw new Error(`Produto sem estoque disponível para reserva. Estoque atual: ${estoqueAtual}`);
+          } else if (tipoOperacao === 'reserva' && estoqueAtual < item.quantidade) {
+            throw new Error(`Estoque insuficiente para reserva. Disponível: ${estoqueAtual}, Solicitado: ${item.quantidade}`);
           }
+          
+          // Armazenar o produto e seu estoque para atualização posterior
+          produtosVerificados.push({
+            id: item.produto_id,
+            estoqueAtual,
+            quantidade: item.quantidade
+          });
         } catch (erro) {
           console.error('Erro ao verificar estoque:', erro);
           throw erro;
         }
       }
       
-      // SEGUNDO: Criar a venda após verificar estoque
-      const { data, error } = await supabase
-        .from('vendas')
-        .insert([venda])
-        .select();
-      
-      if (error) throw error;
-      
-      const vendaId = data[0].id;
-      
-      // TERCEIRO: Inserir os itens da venda
-      const itensComVendaId = itens.map(item => ({
-        ...item,
-        venda_id: vendaId
-      }));
-      
-      const { error: erroItens } = await supabase
-        .from('itens_venda')
-        .insert(itensComVendaId);
-      
-      if (erroItens) throw erroItens;
-      
-      // QUARTO: Atualizar o estoque dos produtos
-      for (const item of itens) {
-        try {
-          const tipoOperacao = venda.tipo === 'reserva' ? 'reserva' : 'venda';
-          await api.produtos.atualizarEstoque(item.produto_id, item.quantidade, tipoOperacao);
-        } catch (erro) {
-          console.error('Erro ao atualizar estoque:', erro);
-          // Aqui poderíamos tentar reverter a venda se a atualização de estoque falhar
-          throw erro;
+      try {
+        // SEGUNDO: Criar a venda
+        const { data, error } = await supabase
+          .from('vendas')
+          .insert([venda])
+          .select();
+        
+        if (error) throw error;
+        
+        const vendaId = data[0].id;
+        
+        // TERCEIRO: Inserir os itens da venda
+        const itensComVendaId = itens.map(item => ({
+          ...item,
+          venda_id: vendaId
+        }));
+        
+        const { error: erroItens } = await supabase
+          .from('itens_venda')
+          .insert(itensComVendaId);
+        
+        if (erroItens) throw erroItens;
+        
+        // QUARTO: Atualizar o estoque dos produtos
+        for (const produtoVerificado of produtosVerificados) {
+          const novoEstoque = produtoVerificado.estoqueAtual - produtoVerificado.quantidade;
+          
+          // Atualiza o estoque diretamente, sem chamar a função atualizarEstoque
+          // que faria uma nova verificação
+          const { error: erroAtualizacao } = await supabase
+            .from('produtos')
+            .update({ estoque: novoEstoque })
+            .eq('id', produtoVerificado.id);
+          
+          if (erroAtualizacao) throw erroAtualizacao;
         }
+        
+        return data[0] as Venda;
+      } catch (erro) {
+        console.error('Erro ao processar venda:', erro);
+        throw erro;
       }
-      
-      return data[0] as Venda;
     },
     
     uploadComprovante: async (arquivo: File) => {
-      const nomeArquivo = `comprovantes/${Date.now()}_${arquivo.name}`;
-      
-      const { data, error } = await supabase
-        .storage
-        .from('vendas')
-        .upload(nomeArquivo, arquivo);
-      
-      if (error) throw error;
-      
-      // Obtém a URL pública do arquivo
-      const { data: urlData } = supabase
-        .storage
-        .from('vendas')
-        .getPublicUrl(nomeArquivo);
-      
-      return urlData.publicUrl;
+      try {
+        // Primeiro, verificar se o bucket existe
+        const { data: buckets, error: bucketsError } = await supabase.storage.listBuckets();
+        
+        if (bucketsError) {
+          console.error('Erro ao listar buckets:', bucketsError);
+          // Tentar usar um bucket padrão se não conseguir listar
+        }
+        
+        const bucketExists = buckets?.some(bucket => bucket.name === 'comprovantes');
+        let bucketName = 'comprovantes';
+        
+        // Se o bucket não existir, tentar criá-lo
+        if (!bucketExists) {
+          try {
+            const { error: createError } = await supabase.storage.createBucket(bucketName, {
+              public: true,
+              fileSizeLimit: 10485760, // 10MB
+            });
+            
+            if (createError) {
+              console.error('Erro ao criar bucket comprovantes:', createError);
+              // Tentar usar um bucket alternativo
+              bucketName = 'public';
+              console.log('Tentando usar bucket alternativo:', bucketName);
+            } else {
+              console.log('Bucket "comprovantes" criado com sucesso');
+            }
+          } catch (createError) {
+            console.error('Exceção ao criar bucket:', createError);
+            // Tentar usar um bucket alternativo
+            bucketName = 'public';
+            console.log('Tentando usar bucket alternativo após exceção:', bucketName);
+          }
+        }
+        
+        // Gerar um nome único para o arquivo
+        const extensao = arquivo.name.split('.').pop() || 'jpg';
+        const nomeArquivo = `comprovante_${Date.now()}.${extensao}`;
+        
+        // Fazer upload do arquivo
+        const { data, error } = await supabase
+          .storage
+          .from(bucketName)
+          .upload(nomeArquivo, arquivo, {
+            cacheControl: '3600',
+            upsert: true // Substituir se já existir
+          });
+        
+        if (error) {
+          console.error(`Erro ao fazer upload para o bucket ${bucketName}:`, error);
+          throw error;
+        }
+        
+        // Obter a URL pública do arquivo
+        const { data: urlData } = supabase
+          .storage
+          .from(bucketName)
+          .getPublicUrl(nomeArquivo);
+        
+        console.log('Upload de comprovante bem-sucedido:', urlData.publicUrl);
+        return urlData.publicUrl;
+      } catch (error) {
+        console.error('Erro ao fazer upload do comprovante:', error);
+        // Retornar null em caso de erro para não interromper o fluxo principal
+        return null;
+      }
     },
 
     atualizar: async (id: string, venda: Partial<Venda>) => {

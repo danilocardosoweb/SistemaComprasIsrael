@@ -227,6 +227,30 @@ const ComprovanteVenda = () => {
                 venda.forma_pagamento}</p>
             </div>
           </div>
+          
+          {/* Comprovante de Pagamento */}
+          {venda.comprovante_url && (
+            <div className="mt-4">
+              <h3 className="text-lg font-semibold mb-2">Comprovante de Pagamento</h3>
+              <div className="border rounded-md p-3 bg-gray-50">
+                <div className="flex flex-col items-center">
+                  <img 
+                    src={venda.comprovante_url} 
+                    alt="Comprovante de Pagamento" 
+                    className="max-h-48 object-contain rounded-md border border-gray-200 mb-2"
+                  />
+                  <a 
+                    href={venda.comprovante_url} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-blue-600 hover:text-blue-800 text-sm"
+                  >
+                    Visualizar comprovante em tamanho original
+                  </a>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
         
         {/* Itens da Venda */}

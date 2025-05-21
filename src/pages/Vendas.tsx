@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
-import { Plus, Search, MoreHorizontal, Eye, Loader2, FileDown, Trash2, Edit, Save, X, MinusCircle } from "lucide-react";
+import { Plus, Search, MoreHorizontal, Eye, Loader2, FileDown, Trash2, Edit, Save, X, MinusCircle, Download, ExternalLink, FileX } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { api, Venda as SupabaseVenda, ItemVenda, StatusPagamento, StatusVenda, Produto, supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
@@ -39,6 +39,7 @@ type VendaExibicao = {
   forma_pagamento?: string;
   status_pagamento: StatusPagamento;
   geracao?: string;
+  comprovante_url?: string | null;
 };
 
 const Vendas = () => {
@@ -106,7 +107,8 @@ const Vendas = () => {
           status: venda.status_pagamento === 'Pendente' ? 'Pendente' : 'Finalizada',
           status_pagamento: venda.status_pagamento,
           produtos: 0, // Será atualizado ao carregar os detalhes
-          forma_pagamento: venda.forma_pagamento
+          forma_pagamento: venda.forma_pagamento,
+          comprovante_url: venda.comprovante_url
         }));
         
         setVendas(vendasFormatadas);
@@ -135,14 +137,23 @@ const Vendas = () => {
     setLoadingDetalhes(true);
     
     try {
+      // Carregar os detalhes completos da venda
+      const vendaCompleta = await api.vendas.obter(venda.id);
+      
       // Carregar os itens da venda
       const itens = await api.vendas.obterItens(venda.id);
       setItensVenda(itens);
       
-      // Atualizar a quantidade de produtos na venda selecionada
+      // Atualizar a venda selecionada com todos os detalhes
       setSelectedVenda(prev => {
         if (prev) {
-          return { ...prev, produtos: itens.length };
+          return { 
+            ...prev, 
+            produtos: itens.length,
+            comprovante_url: vendaCompleta.comprovante_url,
+            forma_pagamento: vendaCompleta.forma_pagamento,
+            status_pagamento: vendaCompleta.status_pagamento
+          };
         }
         return prev;
       });
@@ -828,6 +839,57 @@ const Vendas = () => {
                     <SelectItem value="Ofertado">Ofertado</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+              
+              {/* Comprovante de Pagamento */}
+              <div className="col-span-2 mt-2">
+                <p className="text-sm text-muted-foreground mb-1">Comprovante de Pagamento</p>
+                {selectedVenda?.comprovante_url ? (
+                  <div className="border rounded-md p-3 bg-gray-50">
+                    <div className="flex flex-col sm:flex-row items-center gap-3">
+                      <div className="relative group cursor-pointer">
+                        <img 
+                          src={selectedVenda.comprovante_url} 
+                          alt="Comprovante de Pagamento" 
+                          className="h-40 object-contain rounded-md border border-gray-200 hover:border-primary transition-all"
+                        />
+                        <div className="absolute inset-0 bg-black/5 group-hover:bg-black/10 rounded-md transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
+                          <Search className="h-6 w-6 text-gray-700" />
+                        </div>
+                      </div>
+                      <div className="flex flex-col gap-2 items-center sm:items-start">
+                        <p className="text-sm">Comprovante anexado em: {selectedVenda.data}</p>
+                        <div className="flex gap-2">
+                          <a 
+                            href={selectedVenda.comprovante_url} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-1 text-sm bg-primary text-white px-3 py-1.5 rounded-md hover:bg-primary/90 transition-colors"
+                          >
+                            <ExternalLink className="h-4 w-4" />
+                            Abrir em nova aba
+                          </a>
+                          <a 
+                            href={selectedVenda.comprovante_url} 
+                            download
+                            className="flex items-center gap-1 text-sm bg-secondary text-secondary-foreground px-3 py-1.5 rounded-md hover:bg-secondary/90 transition-colors"
+                          >
+                            <Download className="h-4 w-4" />
+                            Baixar
+                          </a>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="border border-dashed rounded-md p-4 bg-muted/50 flex flex-col items-center justify-center text-center">
+                    <FileX className="h-8 w-8 text-muted-foreground mb-2" />
+                    <p className="text-muted-foreground">Nenhum comprovante de pagamento anexado</p>
+                    {selectedVenda?.status_pagamento === 'Pendente' && (
+                      <p className="text-xs text-muted-foreground mt-1">O cliente ainda não enviou o comprovante de pagamento</p>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
             
