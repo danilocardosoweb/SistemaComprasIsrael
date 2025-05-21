@@ -345,7 +345,7 @@ const PaginaInicial = () => {
             <div className="md:w-1/2 space-y-6 text-center md:text-left">
               <div>
                 <span className="inline-block bg-purple-600 bg-opacity-50 text-white px-4 py-1 rounded-full text-sm font-medium mb-4 shadow-sm">
-                  Igreja Batista Vida Nova
+                  Vida Nova Hortolândia
                 </span>
                 <h1 className="text-4xl md:text-5xl font-bold tracking-tight leading-tight text-white drop-shadow-md">
                   Sistema de Reservas <br />
