@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { calcularSubtotal } from '@/utils/formatarPreco';
 
 // Substitua estas variáveis pelas suas credenciais reais do Supabase
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
@@ -45,11 +46,14 @@ export type Cliente = {
 export type Produto = {
   id: string;
   nome: string;
-  preco: number;
+  preco: number | string;
+  preco_variavel?: boolean;
   estoque: number;
   descricao?: string;
   categoria?: string;
   imagem_url?: string;
+  opcao_parcelamento?: string;
+  descricao_parcelamento?: string;
   created_at: string;
 };
 
@@ -58,6 +62,29 @@ export type StatusPagamento = 'Pendente' | 'Feito (pago)' | 'Cancelado' | 'Ofert
 export type StatusReserva = 'Pendente' | 'Confirmada' | 'Cancelada';
 
 export type StatusVenda = 'Pendente' | 'Finalizada' | 'Cancelada';
+
+// Interface para os textos configuráveis do site
+export interface TextosSite {
+  id?: string;
+  banner_titulo: string;
+  banner_subtitulo: string;
+  banner_descricao: string;
+  banner_badge: string;
+  banner_badge_completo: string;
+  banner_local: string;
+  banner_data: string;
+  banner_botao_texto: string;
+  pagina_inicial_titulo: string;
+  pagina_inicial_subtitulo: string;
+  pagina_inicial_descricao: string;
+  footer_descricao: string;
+  footer_contato_telefone: string;
+  footer_contato_email: string;
+  footer_contato_endereco: string;
+  footer_copyright: string;
+  created_at?: string;
+  updated_at?: string;
+};
 
 export type Venda = {
   id: string;
@@ -84,12 +111,70 @@ export type ItemVenda = {
   produto_id: string;
   produto_nome: string;
   quantidade: number;
-  preco_unitario: number;
+  preco_unitario: number | string; // Permitir tanto número quanto string ("Consulte Valores")
   subtotal: number;
 };
 
 // Funções de API para interagir com o Supabase
 export const api = {
+  // Textos do site
+  siteTextos: {
+    listar: async () => {
+      const { data, error } = await supabase
+        .from('site_textos')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      return data as TextosSite[];
+    },
+    
+    obter: async (id: string) => {
+      const { data, error } = await supabase
+        .from('site_textos')
+        .select('*')
+        .eq('id', id)
+        .single();
+      
+      if (error) throw error;
+      return data as TextosSite;
+    },
+    
+    criar: async (textos: Omit<TextosSite, 'id' | 'created_at' | 'updated_at'>) => {
+      const { data, error } = await supabase
+        .from('site_textos')
+        .insert([{
+          ...textos,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }])
+        .select();
+      
+      if (error) throw error;
+      return data[0] as TextosSite;
+    },
+    
+    atualizar: async (id: string, textos: Partial<TextosSite>) => {
+      const { data, error } = await supabase
+        .from('site_textos')
+        .update({
+          ...textos,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', id)
+        .select();
+      
+      if (error) throw error;
+      return data[0] as TextosSite;
+    },
+    
+    criarTabela: async () => {
+      const { data, error } = await supabase.rpc('create_site_textos_table');
+      
+      if (error) throw error;
+      return data;
+    }
+  },
   // Reservas
   reservas: {
     criar: async (dadosReserva: {
@@ -695,25 +780,38 @@ export const api = {
     
     // Adicionar um novo item a uma venda existente
     adicionarItem: async (vendaId: string, item: Omit<ItemVenda, 'id' | 'venda_id'>) => {
+      // Garantir que o subtotal seja calculado corretamente
+      const subtotalCalculado = calcularSubtotal(item.preco_unitario, item.quantidade);
+      const itemComSubtotalCorreto = {
+        ...item,
+        subtotal: subtotalCalculado
+      };
+      
       // Inserir o novo item
       const { data, error } = await supabase
         .from('itens_venda')
-        .insert([{ ...item, venda_id: vendaId }])
+        .insert([{ ...itemComSubtotalCorreto, venda_id: vendaId }])
         .select();
       
       if (error) throw error;
       
-      // Atualizar o total da venda
-      const { data: venda, error: erroVenda } = await supabase
-        .from('vendas')
+      // Buscar todos os itens da venda para recalcular o total
+      const { data: itensVenda, error: erroItens } = await supabase
+        .from('itens_venda')
         .select('*')
-        .eq('id', vendaId)
-        .single();
+        .eq('venda_id', vendaId);
       
-      if (erroVenda) throw erroVenda;
+      if (erroItens) throw erroItens;
       
-      // Calcular o novo total
-      const novoTotal = venda.total + item.subtotal;
+      // Calcular o novo total somando todos os subtotais
+      const novoTotal = itensVenda.reduce((total, item) => {
+        // Converter subtotal para número se for string
+        const subtotal = typeof item.subtotal === 'string' 
+          ? parseFloat(item.subtotal.replace(/[^\d.,]/g, '').replace(',', '.')) 
+          : item.subtotal;
+          
+        return total + (isNaN(subtotal) ? 0 : subtotal);
+      }, 0);
       
       // Atualizar a venda com o novo total
       const { error: erroAtualizacao } = await supabase

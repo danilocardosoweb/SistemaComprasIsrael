@@ -10,7 +10,7 @@ import {
   SidebarGroup,
   SidebarGroupContent
 } from "@/components/ui/sidebar";
-import { Calendar, Home, LayoutDashboard, Package, PackageOpen, ShoppingCart, Users } from "lucide-react";
+import { Calendar, Home, LayoutDashboard, Package, PackageOpen, ShoppingCart, Users, Settings } from "lucide-react";
 import { Link } from "react-router-dom";
 // Importando o logo com fundo
 import logoSimBranco from "/Image/Logo_Sim_Branco.png";
@@ -23,6 +23,7 @@ export function AppSidebar() {
     { icon: ShoppingCart, label: "Vendas", to: "/vendas" },
     { icon: Users, label: "Clientes", to: "/clientes" },
     { icon: Calendar, label: "Relatórios", to: "/relatorios" },
+    { icon: Settings, label: "Configurações do Site", to: "/configuracoes-site" },
   ];
 
   return (

@@ -6,12 +6,43 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Plus, Edit, Search, Trash2, Loader2, Image, X } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { api, Produto, supabase } from "@/lib/supabase";
+import { formatarPreco } from "@/utils/formatarPreco";
 
 // Tipo Produto já está definido no arquivo supabase.ts
+
+// Lista de categorias disponíveis
+const CATEGORIAS = [
+  'Congresso',
+  'Evento',
+  'Viagem',
+  'Encontros',
+  'Escola',
+  'Seminário',
+  'Produto',
+  'Mentoria',
+  'Conferência'
+];
+
+// Opções de parcelamento
+const OPCOES_PARCELAMENTO = [
+  'À vista',
+  '2x',
+  '3x',
+  '4x',
+  '5x',
+  '6x',
+  '7x',
+  '8x',
+  '9x',
+  '10x',
+  '12x'
+];
 
 const Produtos = () => {
   const [produtos, setProdutos] = useState<Produto[]>([]);
@@ -36,6 +67,14 @@ const Produtos = () => {
     
     const match = descricao.match(/\[IMG_URL\](https?:\/\/[^\s]+)/);
     return match ? match[1] : "";
+  };
+  
+  // Função para limpar a descrição, removendo a URL da imagem
+  const limparDescricao = (descricao?: string): string => {
+    if (!descricao) return "";
+    
+    // Remove o prefixo [IMG_URL] e a URL que segue até o próximo espaço
+    return descricao.replace(/\[IMG_URL\]https?:\/\/[^\s]+\s*/, "").trim();
   };
 
   const handleOpenDialog = (produto?: Produto) => {
@@ -91,7 +130,9 @@ const Produtos = () => {
   };
 
   const handleSaveProduct = async () => {
-    if (!currentProduto.nome || !currentProduto.categoria || !currentProduto.preco) {
+    // Validação diferente para produtos com preço variável
+    if (!currentProduto.nome || !currentProduto.categoria || 
+        (!currentProduto.preco_variavel && !currentProduto.preco)) {
       toast({
         title: "Erro ao salvar",
         description: "Por favor, preencha todos os campos obrigatórios.",
@@ -119,6 +160,7 @@ const Produtos = () => {
         // Atualizar produto existente
         const produtoAtualizado = {
           ...currentProduto,
+          preco: currentProduto.preco_variavel ? "Consulte Valores" : (currentProduto.preco === "" ? 0 : currentProduto.preco),
           descricao
         };
         
@@ -138,9 +180,12 @@ const Produtos = () => {
         const novoProduto = {
           nome: currentProduto.nome || '',
           categoria: currentProduto.categoria || '',
-          preco: currentProduto.preco || 0,
+          preco: currentProduto.preco_variavel ? "Consulte Valores" : (currentProduto.preco === "" ? 0 : currentProduto.preco),
+          preco_variavel: currentProduto.preco_variavel || false,
           estoque: currentProduto.estoque || 0,
-          descricao: descricao
+          descricao: descricao,
+          opcao_parcelamento: currentProduto.opcao_parcelamento || null,
+          descricao_parcelamento: currentProduto.descricao_parcelamento || null
         };
         
         const produtoCriado = await api.produtos.criar(novoProduto);
@@ -264,7 +309,9 @@ const Produtos = () => {
                     </TableCell>
                     <TableCell className="font-medium">{produto.nome}</TableCell>
                     <TableCell>{produto.categoria}</TableCell>
-                    <TableCell className="text-right">R$ {produto.preco.toFixed(2).replace('.', ',')}</TableCell>
+                    <TableCell className="text-right">
+                      {formatarPreco(produto.preco)}
+                    </TableCell>
                     <TableCell className="text-right">{produto.estoque}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
@@ -292,16 +339,16 @@ const Produtos = () => {
 
       {/* Dialog for adding/editing products */}
       <Dialog open={showDialog} onOpenChange={setShowDialog}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-md max-h-[90vh] overflow-hidden flex flex-col">
           <DialogHeader>
             <DialogTitle>{isEditing ? "Editar Produto" : "Novo Produto"}</DialogTitle>
             <DialogDescription>
               {isEditing ? "Atualize os detalhes do produto" : "Adicione um novo produto ao catálogo"}
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="imagem_url" className="flex items-center gap-2">
+          <div className="grid gap-3 py-3 overflow-y-auto pr-2 flex-grow">
+            <div className="grid gap-1.5">
+              <Label htmlFor="imagem_url" className="flex items-center gap-2 text-sm">
                 <Image className="h-4 w-4" />
                 URL da imagem do produto
               </Label>
@@ -311,6 +358,7 @@ const Produtos = () => {
                 placeholder="https://exemplo.com/imagem.jpg"
                 value={imagemUrl}
                 onChange={handleImagemUrlChange}
+                className="h-9"
               />
               
               {imagemPreview && (
@@ -332,64 +380,143 @@ const Produtos = () => {
                 </div>
               )}
               
-              <div className="text-xs text-muted-foreground mt-1">
+              <div className="text-xs text-muted-foreground">
                 Cole a URL de uma imagem da web. A imagem deve estar hospedada em um site público.
               </div>
             </div>
             
-            <div className="grid gap-2">
-              <Label htmlFor="nome">Nome do produto*</Label>
+            <div className="grid gap-1.5">
+              <Label htmlFor="nome" className="text-sm">Nome do produto*</Label>
               <Input
                 id="nome"
                 value={currentProduto.nome || ""}
                 onChange={(e) => setCurrentProduto({ ...currentProduto, nome: e.target.value })}
+                className="h-9"
               />
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="categoria">Categoria*</Label>
-              <Input
-                id="categoria"
+            <div className="grid gap-1.5">
+              <Label htmlFor="categoria" className="text-sm">Categoria*</Label>
+              <Select
                 value={currentProduto.categoria || ""}
-                onChange={(e) => setCurrentProduto({ ...currentProduto, categoria: e.target.value })}
-              />
+                onValueChange={(value) => setCurrentProduto({ ...currentProduto, categoria: value })}
+              >
+                <SelectTrigger id="categoria" className="h-9">
+                  <SelectValue placeholder="Selecione uma categoria" />
+                </SelectTrigger>
+                <SelectContent>
+                  {CATEGORIAS.map((categoria) => (
+                    <SelectItem key={categoria} value={categoria}>{categoria}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="preco">Preço (R$)*</Label>
-                <Input
-                  id="preco"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={currentProduto.preco || ""}
-                  onChange={(e) => setCurrentProduto({ ...currentProduto, preco: parseFloat(e.target.value) })}
-                />
+            <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-1.5">
+                <div className="flex justify-between items-center">
+                  <Label htmlFor="preco" className="text-sm">Preço (R$)*</Label>
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="preco_variavel"
+                      checked={currentProduto.preco_variavel || false}
+                      onChange={(e) => {
+                        const isChecked = e.target.checked;
+                        setCurrentProduto({
+                          ...currentProduto,
+                          preco_variavel: isChecked,
+                          preco: isChecked ? "Consulte Valores" : ""
+                        });
+                      }}
+                      className="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-600"
+                    />
+                    <Label htmlFor="preco_variavel" className="text-xs">Consulte Valores</Label>
+                  </div>
+                </div>
+                {!currentProduto.preco_variavel ? (
+                  <Input
+                    id="preco"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={typeof currentProduto.preco === 'number' ? currentProduto.preco : (currentProduto.preco === "" ? "" : 0)}
+                    onChange={(e) => {
+                      const valor = e.target.value === "" ? "" : parseFloat(e.target.value);
+                      setCurrentProduto({ ...currentProduto, preco: valor });
+                    }}
+                    className="h-9"
+                  />
+                ) : (
+                  <div className="h-9 flex items-center px-3 border rounded-md bg-gray-100 text-gray-500">
+                    Consulte Valores
+                  </div>
+                )}
               </div>
-              <div className="grid gap-2">
-                <Label htmlFor="estoque">Estoque</Label>
+              <div className="grid gap-1.5">
+                <Label htmlFor="estoque" className="text-sm">Estoque</Label>
                 <Input
                   id="estoque"
                   type="number"
                   min="0"
                   value={currentProduto.estoque || ""}
                   onChange={(e) => setCurrentProduto({ ...currentProduto, estoque: parseInt(e.target.value) })}
+                  className="h-9"
                 />
               </div>
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="descricao">Descrição</Label>
-              <Input
+            <div className="grid gap-1.5">
+              <Label htmlFor="opcao_parcelamento" className="text-sm">Opção de Parcelamento</Label>
+              <Select
+                value={currentProduto.opcao_parcelamento || ""}
+                onValueChange={(value) => setCurrentProduto({ ...currentProduto, opcao_parcelamento: value })}
+              >
+                <SelectTrigger id="opcao_parcelamento" className="h-9">
+                  <SelectValue placeholder="Selecione uma opção de parcelamento" />
+                </SelectTrigger>
+                <SelectContent>
+                  {OPCOES_PARCELAMENTO.map((opcao) => (
+                    <SelectItem key={opcao} value={opcao}>{opcao}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="grid gap-1.5">
+              <Label htmlFor="descricao_parcelamento" className="text-sm">Descrição do Parcelamento</Label>
+              <Textarea
+                id="descricao_parcelamento"
+                value={currentProduto.descricao_parcelamento || ""}
+                onChange={(e) => setCurrentProduto({ ...currentProduto, descricao_parcelamento: e.target.value })}
+                className="min-h-[80px] resize-vertical"
+                placeholder="Informe detalhes sobre o parcelamento, formas de pagamento, etc."
+              />
+            </div>
+            
+            <div className="grid gap-1.5">
+              <Label htmlFor="descricao" className="text-sm">Descrição</Label>
+              <Textarea
                 id="descricao"
-                value={currentProduto.descricao || ""}
-                onChange={(e) => setCurrentProduto({ ...currentProduto, descricao: e.target.value })}
+                value={limparDescricao(currentProduto.descricao || "")}
+                onChange={(e) => {
+                  // Preservar a URL da imagem ao atualizar a descrição
+                  const urlImagem = extrairUrlImagem(currentProduto.descricao || "");
+                  const novaDescricao = e.target.value;
+                  
+                  // Se temos uma URL de imagem, vamos mantê-la no início da descrição
+                  const descricaoCompleta = urlImagem ? `[IMG_URL]${urlImagem} ${novaDescricao}` : novaDescricao;
+                  
+                  setCurrentProduto({ ...currentProduto, descricao: descricaoCompleta });
+                }}
+                className="min-h-[100px] resize-vertical"
+                placeholder="Digite a descrição do produto aqui..."
               />
             </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="mt-4 pt-2 border-t flex-shrink-0">
             <Button variant="outline" onClick={() => setShowDialog(false)}>Cancelar</Button>
             <Button 
               onClick={handleSaveProduct}
               disabled={loadingAction}
+              className="bg-purple-600 hover:bg-purple-700"
             >
               {loadingAction ? (
                 <>

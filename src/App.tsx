@@ -17,6 +17,7 @@ import ComprovanteVenda from "./pages/ComprovanteVenda";
 import Clientes from "./pages/Clientes";
 import Relatorios from "./pages/Relatorios";
 import Login from "./pages/Login";
+import ConfiguracoesSite from "./pages/ConfiguracoesSite";
 
 const queryClient = new QueryClient();
 
@@ -47,6 +48,7 @@ const App = () => (
               <Route path="/vendas/:id/comprovante" element={<ComprovanteVenda />} />
               <Route path="/clientes" element={<Clientes />} />
               <Route path="/relatorios" element={<Relatorios />} />
+              <Route path="/configuracoes-site" element={<ConfiguracoesSite />} />
             </Route>
             
             <Route path="*" element={<NotFound />} />
