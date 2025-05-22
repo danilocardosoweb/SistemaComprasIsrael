@@ -1,5 +1,7 @@
 # Log de Alterações - Divino Vendas App
 
+[21/05/2025 21:52] - [interface] - [Substituição de todas as referências de "Geração Israel" por "Ministério De Casais" em todo o sistema] - [Danilo Cardoso]
+
 [21/05/2025 21:25] - [interface] - [Substituição da imagem logo_Com_Fundo.png por Logo_Sim_Branco.png em todo o sistema] - [Danilo Cardoso]
 
 [21/05/2025 15:09] - [interface] - [Adição de footer na página inicial com informações de contato e links rápidos] - [Danilo Cardoso]

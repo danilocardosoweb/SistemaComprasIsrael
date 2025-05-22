@@ -1,10 +1,10 @@
-# Sistema de Reservas - Geração Israel
+# Sistema de Reservas - Ministério De Casais
 
 ## Sobre o Projeto
 
-Este sistema foi desenvolvido para a Geração Israel da Igreja Batista Vida Nova Hortolândia, com o objetivo de gerenciar vendas e reservas de produtos para eventos e congressos.
+Este sistema foi desenvolvido para o Ministério De Casais da Igreja Batista Vida Nova Hortolândia, com o objetivo de gerenciar vendas e reservas de produtos para eventos e congressos.
 
-![Logo Geração Israel](/public/Image/Logo_Sim_Branco.png)
+![Logo Ministério De Casais](/public/Image/Logo_Sim_Branco.png)
 
 ## Funcionalidades
 
@@ -55,4 +55,4 @@ npm run dev
 
 ## Desenvolvido por
 
-Desenvolvido com ❤️ por Danilo Cardoso para a Geração Israel.
+Desenvolvido com ❤️ por Danilo Cardoso para o Ministério De Casais.
