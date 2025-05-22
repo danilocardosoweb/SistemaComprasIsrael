@@ -6,6 +6,7 @@ import { api } from "@/lib/supabase";
 import { Venda, ItemVenda, Produto } from "@/lib/supabase";
 import { format, parseISO, startOfMonth, endOfMonth, eachMonthOfInterval, subMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { formatarPreco, precoParaNumero } from "@/utils/formatarPreco";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -110,7 +111,8 @@ const Relatorios = () => {
       );
       
       if (indiceMes !== -1) {
-        dadosMensais[indiceMes].vendas += venda.total;
+        // Converter o total para número antes de somar
+        dadosMensais[indiceMes].vendas += precoParaNumero(venda.total);
       }
     });
     
@@ -206,7 +208,8 @@ const Relatorios = () => {
       }
       
       clientesVendas[venda.cliente_nome].compras += 1;
-      clientesVendas[venda.cliente_nome].total += venda.total;
+      // Converter o total para número antes de somar
+      clientesVendas[venda.cliente_nome].total += precoParaNumero(venda.total);
     });
     
     // Converter para array e ordenar por número de compras
@@ -237,7 +240,8 @@ const Relatorios = () => {
         };
       }
       
-      clientesValores[venda.cliente_nome].total += venda.total;
+      // Converter o total para número antes de somar
+      clientesValores[venda.cliente_nome].total += precoParaNumero(venda.total);
       clientesValores[venda.cliente_nome].compras += 1;
     });
     

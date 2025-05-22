@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { formatarPreco, precoParaNumero } from "@/utils/formatarPreco";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -80,42 +81,69 @@ const ComprovanteVenda = () => {
     // Validar o número de telefone
     let numeroFormatado = whatsappNumber.replace(/\D/g, '');
     
+    // Verificar se o número tem o comprimento correto
+    if (numeroFormatado.length < 10 || numeroFormatado.length > 13) {
+      toast({
+        title: "Número inválido",
+        description: "Por favor, insira um número de telefone válido com DDD.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     // Adicionar o código do país se não tiver
     if (numeroFormatado.length === 11 || numeroFormatado.length === 10) {
       numeroFormatado = `55${numeroFormatado}`;
     }
     
-    // Criar uma mensagem com os detalhes da venda
+    // Formatar dados para a mensagem
     const clienteNome = venda?.cliente_nome || "Cliente";
-    const dataVenda = venda?.data_venda ? formatarData(venda.data_venda) : "";
-    const total = venda?.total.toFixed(2) || "0,00";
+    const dataVenda = venda?.data_venda ? formatarData(venda.data_venda) : "Data não disponível";
+    const totalFormatado = formatarPreco(venda?.total || 0).replace('R$ ', '');
     
-    const mensagem = `*Comprovante de Venda - Israel Sales*\n\n`+
-      `*Cliente:* ${clienteNome}\n`+
-      `*Data:* ${dataVenda}\n`+
-      `*Total:* R$ ${total}\n`+
-      `*Forma de Pagamento:* ${venda?.forma_pagamento === 'pix' ? 'PIX' : venda?.forma_pagamento === 'dinheiro' ? 'Dinheiro' : venda?.forma_pagamento === 'cartao' ? 'Cartão' : 'Não informado'}\n\n`+
-      `*Status do Pagamento:* ${venda?.status_pagamento}\n\n`+
-      `*Itens:*\n${itensVenda.map(item => `- ${item.quantidade}x ${item.produto_nome} (R$ ${item.preco_unitario.toFixed(2)}) = R$ ${item.subtotal.toFixed(2)}`).join('\n')}\n\n`+
-      `*Total da Venda:* R$ ${total}\n\n`+
-      `Agradecemos pela sua compra!`;
+    // Criar mensagem simplificada para evitar problemas de codificação
+    const mensagem = `Comprovante de Venda - Ministério De Casais\n\n`+
+      `Cliente: ${clienteNome}\n`+
+      `Data: ${dataVenda}\n`+
+      `Total: R$ ${totalFormatado}\n`+
+      `Forma de Pagamento: ${venda?.forma_pagamento === 'pix' ? 'PIX' : venda?.forma_pagamento === 'dinheiro' ? 'Dinheiro' : venda?.forma_pagamento === 'cartao' ? 'Cartão' : 'Não informado'}\n\n`+
+      `Status do Pagamento: ${venda?.status_pagamento}\n\n`+
+      `Itens:\n${itensVenda.map(item => {
+        const precoUnitFormatado = formatarPreco(item.preco_unitario).replace('R$ ', '');
+        const subtotalFormatado = formatarPreco(item.subtotal).replace('R$ ', '');
+        return `- ${item.quantidade}x ${item.produto_nome} (R$ ${precoUnitFormatado}) = R$ ${subtotalFormatado}`;
+      }).join('\n')}\n\n`+
+      `Total da Venda: R$ ${totalFormatado}\n\n`;
     
-    // Codificar a mensagem para URL
-    const mensagemCodificada = encodeURIComponent(mensagem);
+    // Adicionar link do comprovante se disponível
+    let mensagemFinal = mensagem;
+    if (venda?.comprovante_url) {
+      mensagemFinal += `Link do Comprovante:\n${venda.comprovante_url}\n\n`;
+    }
+    
+    mensagemFinal += `Agradecemos pela sua compra!`;
+    
+    // Codificar a mensagem para URL (usando encodeURI para maior compatibilidade)
+    const mensagemCodificada = encodeURIComponent(mensagemFinal);
     
     try {
       setEnviandoWhatsApp(true);
-      // Abrir o WhatsApp com a mensagem
-      window.open(`https://wa.me/${numeroFormatado}?text=${mensagemCodificada}`, '_blank');
+      
+      // Usar API direta do WhatsApp para dispositivos móveis e desktop
+      const whatsappUrl = `https://api.whatsapp.com/send?phone=${numeroFormatado}&text=${mensagemCodificada}`;
+      
+      // Abrir em nova janela
+      window.open(whatsappUrl, '_blank');
       
       // Fechar o diálogo
       setShowWhatsAppDialog(false);
       
       toast({
-        title: "Comprovante enviado",
-        description: "O WhatsApp foi aberto com o comprovante da venda.",
+        title: "Redirecionando para o WhatsApp",
+        description: "Aguarde enquanto o aplicativo do WhatsApp é aberto.",
       });
     } catch (error) {
+      console.error("Erro ao abrir WhatsApp:", error);
       toast({
         title: "Erro ao enviar comprovante",
         description: "Não foi possível abrir o WhatsApp. Verifique o número e tente novamente.",
@@ -135,7 +163,11 @@ const ComprovanteVenda = () => {
   };
 
   const calcularTotal = () => {
-    return itensVenda.reduce((total, item) => total + item.subtotal, 0);
+    return itensVenda.reduce((total: number, item) => {
+      // Converter o subtotal para número antes de somar
+      const subtotalNumerico = precoParaNumero(item.subtotal);
+      return total + subtotalNumerico;
+    }, 0);
   };
 
   if (loading) {
@@ -270,13 +302,13 @@ const ComprovanteVenda = () => {
                 <TableRow key={item.id}>
                   <TableCell>{item.produto_nome}</TableCell>
                   <TableCell className="text-right">{item.quantidade}</TableCell>
-                  <TableCell className="text-right">R$ {item.preco_unitario.toFixed(2)}</TableCell>
-                  <TableCell className="text-right">R$ {item.subtotal.toFixed(2)}</TableCell>
+                  <TableCell className="text-right">{formatarPreco(item.preco_unitario)}</TableCell>
+                  <TableCell className="text-right">{formatarPreco(item.subtotal)}</TableCell>
                 </TableRow>
               ))}
               <TableRow>
                 <TableCell colSpan={3} className="text-right font-bold">Total</TableCell>
-                <TableCell className="text-right font-bold">R$ {venda.total.toFixed(2)}</TableCell>
+                <TableCell className="text-right font-bold">{formatarPreco(venda.total)}</TableCell>
               </TableRow>
             </TableBody>
           </Table>

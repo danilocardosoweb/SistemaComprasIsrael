@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { precoParaNumero, calcularSubtotal } from "@/utils/formatarPreco";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -139,7 +140,11 @@ const NovaVenda = () => {
   };
 
   const calcularTotal = () => {
-    return itensVenda.reduce((total, item) => total + (item.produto.preco * item.quantidade), 0);
+    return itensVenda.reduce((total: number, item) => {
+      // Usar a função precoParaNumero para garantir que o preço seja convertido corretamente
+      const precoNumerico = precoParaNumero(item.produto.preco);
+      return total + (precoNumerico * item.quantidade);
+    }, 0);
   };
 
   const handleComprovanteChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -175,13 +180,18 @@ const NovaVenda = () => {
       setSalvandoVenda(true);
       
       // Preparar itens da venda para o formato esperado pela API
-      const itensParaAPI = itensVenda.map(item => ({
-        produto_id: item.produto.id,
-        produto_nome: item.produto.nome,
-        quantidade: item.quantidade,
-        preco_unitario: item.produto.preco,
-        subtotal: item.produto.preco * item.quantidade
-      }));
+      const itensParaAPI = itensVenda.map(item => {
+        // Usar a função calcularSubtotal para garantir que o subtotal seja calculado corretamente
+        const subtotalCalculado = calcularSubtotal(item.produto.preco, item.quantidade);
+        
+        return {
+          produto_id: item.produto.id,
+          produto_nome: item.produto.nome,
+          quantidade: item.quantidade,
+          preco_unitario: item.produto.preco,
+          subtotal: subtotalCalculado
+        };
+      });
       
       // Preparar os dados da venda
       const totalVenda = calcularTotal();
@@ -341,7 +351,9 @@ const NovaVenda = () => {
                     <SelectContent>
                       {produtos.map(produto => (
                         <SelectItem key={produto.id} value={produto.id}>
-                          {produto.nome} - R$ {produto.preco.toFixed(2)}
+                          {produto.nome} - {typeof produto.preco === 'number' 
+                            ? `R$ ${produto.preco.toFixed(2)}` 
+                            : produto.preco}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -381,9 +393,17 @@ const NovaVenda = () => {
                       {itensVenda.map((item) => (
                         <TableRow key={item.produto.id}>
                           <TableCell>{item.produto.nome}</TableCell>
-                          <TableCell className="text-right">R$ {item.produto.preco.toFixed(2)}</TableCell>
+                          <TableCell className="text-right">
+                            {typeof item.produto.preco === 'number' 
+                              ? `R$ ${item.produto.preco.toFixed(2)}` 
+                              : item.produto.preco}
+                          </TableCell>
                           <TableCell className="text-right">{item.quantidade}</TableCell>
-                          <TableCell className="text-right">R$ {(item.produto.preco * item.quantidade).toFixed(2)}</TableCell>
+                          <TableCell className="text-right">
+                            {typeof item.produto.preco === 'number' 
+                              ? `R$ ${(item.produto.preco * item.quantidade).toFixed(2)}` 
+                              : item.produto.preco}
+                          </TableCell>
                           <TableCell className="text-right">
                             <Button variant="ghost" size="icon" onClick={() => handleRemoveItem(item.produto.id)}>
                               <Trash2 className="h-4 w-4" />
@@ -393,7 +413,7 @@ const NovaVenda = () => {
                       ))}
                       <TableRow>
                         <TableCell colSpan={3} className="text-right font-medium">Total</TableCell>
-                        <TableCell className="text-right font-bold">R$ {calcularTotal().toFixed(2)}</TableCell>
+                        <TableCell className="text-right font-bold">R$ {calcularTotal().toFixed(2).replace('.', ',')}</TableCell>
                         <TableCell></TableCell>
                       </TableRow>
                     </TableBody>

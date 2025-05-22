@@ -1,5 +1,53 @@
 # Log de Alterações - Divino Vendas App
 
+[22/05/2025 13:05] - [pages/Vendas] - [Adição de filtro de Status ao lado da busca por cliente na página de Vendas] - [Danilo Cardoso]
+
+[22/05/2025 12:55] - [pages/ComprovanteVenda, pages/PaginaInicial] - [Correção da exibição de subtotais nas novas vendas e do total na confirmação de reserva] - [Danilo Cardoso]
+
+[22/05/2025 12:45] - [global] - [Correção dos cálculos de totais em todas as páginas do sistema e correção de erros de tipagem] - [Danilo Cardoso]
+
+[22/05/2025 12:40] - [lib/supabase] - [Correção no cálculo de subtotais e totais das vendas após alteração do tipo da coluna preço] - [Danilo Cardoso]
+
+[22/05/2025 12:35] - [utils/formatarPreco] - [Melhoria nas funções de formatação de preço para lidar com valores convertidos de numérico para texto] - [Danilo Cardoso]
+
+[22/05/2025 12:30] - [global] - [Padronização da formatação de preços em todo o sistema usando a função formatarPreco] - [Danilo Cardoso]
+
+[22/05/2025 12:25] - [pages/PaginaInicial] - [Padronização da formatação de preços na página inicial] - [Danilo Cardoso]
+
+[22/05/2025 12:20] - [pages/Produtos] - [Correção do formulário de produtos para permitir digitação correta de preços] - [Danilo Cardoso]
+
+[22/05/2025 12:15] - [utils/formatarPreco] - [Criação de utilitários para formatação de preços variáveis e correção de erros na página de Vendas] - [Danilo Cardoso]
+
+[22/05/2025 11:30] - [produtos] - [Implementação da opção "Consulte Valores" para produtos com preço variável] - [Danilo Cardoso]
+
+[22/05/2025 08:48] - [interface] - [Simplificação da apresentação visual das categorias com remoção dos ícones] - [Danilo Cardoso]
+
+[22/05/2025 08:43] - [interface] - [Personalização dos ícones de categorias com cores e símbolos específicos] - [Danilo Cardoso]
+
+[22/05/2025 08:40] - [interface] - [Redesign completo da interface de busca e filtro de categorias com layout moderno] - [Danilo Cardoso]
+
+[22/05/2025 08:38] - [interface] - [Melhoria no filtro de categorias com posicionamento ao lado da busca] - [Danilo Cardoso]
+
+[22/05/2025 08:36] - [interface] - [Adição de filtro de categorias na página inicial] - [Danilo Cardoso]
+
+[22/05/2025 08:32] - [interface] - [Melhoria na UX/UI do formulário de produtos com barra de rolagem e layout otimizado] - [Danilo Cardoso]
+
+[22/05/2025 08:28] - [interface] - [Simplificação das opções de parcelamento para mostrar apenas a quantidade de parcelas] - [Danilo Cardoso]
+
+[22/05/2025 08:25] - [funcionalidade] - [Adição do campo Opção de Parcelamento aos produtos] - [Danilo Cardoso]
+
+[22/05/2025 08:22] - [interface] - [Adição de categorias pré-definidas no formulário de novo produto] - [Danilo Cardoso]
+
+[22/05/2025 08:15] - [interface] - [Melhoria na exibição de nomes longos de produtos nos diálogos de reserva e seleção] - [Danilo Cardoso]
+
+[22/05/2025 08:12] - [interface] - [Melhorias na UX/UI do diálogo de reserva com barra de rolagem e layout otimizado para dispositivos móveis] - [Danilo Cardoso]
+
+[22/05/2025 08:10] - [funcionalidade] - [Implementação da seleção de múltiplos produtos no diálogo de reserva] - [Danilo Cardoso]
+
+[21/05/2025 22:40] - [correção] - [Correção da função de envio de comprovante por WhatsApp para usar a API correta] - [Danilo Cardoso]
+
+[21/05/2025 22:37] - [funcionalidade] - [Inclusão do link do comprovante na mensagem de WhatsApp quando disponível] - [Danilo Cardoso]
+
 [21/05/2025 21:52] - [interface] - [Substituição de todas as referências de "Geração Israel" por "Ministério De Casais" em todo o sistema] - [Danilo Cardoso]
 
 [21/05/2025 21:25] - [interface] - [Substituição da imagem logo_Com_Fundo.png por Logo_Sim_Branco.png em todo o sistema] - [Danilo Cardoso]

@@ -1,6 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { formatarPreco, calcularSubtotal, isPrecoNumerico, precoParaNumero } from "@/utils/formatarPreco";
 import { 
   Select, 
   SelectContent, 
@@ -45,6 +46,7 @@ type VendaExibicao = {
 const Vendas = () => {
   const [vendas, setVendas] = useState<VendaExibicao[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("todos");
   const [selectedVenda, setSelectedVenda] = useState<VendaExibicao | null>(null);
   const [showDetails, setShowDetails] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -67,8 +69,14 @@ const Vendas = () => {
   
   // Função para calcular o total dos itens de uma venda
   const calcularTotalItens = (itens: ItemVenda[]): number => {
-    return itens.reduce((total, item) => total + item.subtotal, 0);
+    return itens.reduce((total: number, item) => {
+      // Converter o subtotal para número antes de somar
+      const subtotalNumerico = precoParaNumero(item.subtotal);
+      return total + subtotalNumerico;
+    }, 0);
   };
+
+
   const navigate = useNavigate();
   const { toast } = useToast();
   
@@ -126,10 +134,21 @@ const Vendas = () => {
     carregarVendas();
   }, [toast]);
 
-  const filteredVendas = vendas.filter(venda => 
-    venda.cliente.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    venda.id.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Filtrar vendas com base no termo de busca e no filtro de status
+  const filteredVendas = useMemo(() => {
+    return vendas.filter(venda => {
+      // Filtrar por termo de busca (cliente ou código)
+      const matchesSearchTerm = searchTerm === "" || 
+        venda.cliente.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        venda.id.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      // Filtrar por status
+      const matchesStatus = statusFilter === "todos" || venda.status === statusFilter;
+      
+      // Retornar apenas as vendas que correspondem a ambos os filtros
+      return matchesSearchTerm && matchesStatus;
+    });
+  }, [vendas, searchTerm, statusFilter]);
 
   const handleShowDetails = async (venda: VendaExibicao) => {
     setSelectedVenda(venda);
@@ -212,7 +231,7 @@ const Vendas = () => {
         produto_nome: produtoSelecionado.nome,
         quantidade,
         preco_unitario: produtoSelecionado.preco,
-        subtotal: produtoSelecionado.preco * quantidade
+        subtotal: calcularSubtotal(produtoSelecionado.preco, quantidade)
       };
       
       // Adicionar o item à venda
@@ -549,7 +568,7 @@ const Vendas = () => {
       const dadosVendas = vendasCompletas.map(venda => {
         // Criar uma lista formatada dos produtos da venda
         const produtosLista = venda.itens?.map(item => 
-          `${item.quantidade}x ${item.produto_nome} (R$ ${item.preco_unitario.toFixed(2)})`
+          `${item.quantidade}x ${item.produto_nome} (${formatarPreco(item.preco_unitario)})`
         ).join(', ') || '';
         
         return {
@@ -579,8 +598,8 @@ const Vendas = () => {
             'Data Venda': venda.data,
             'Produto': item.produto_nome,
             'Quantidade': item.quantidade,
-            'Preço Unitário (R$)': item.preco_unitario.toFixed(2),
-            'Subtotal (R$)': item.subtotal.toFixed(2),
+            'Preço Unitário (R$)': isPrecoNumerico(item.preco_unitario) ? precoParaNumero(item.preco_unitario).toFixed(2) : item.preco_unitario,
+            'Subtotal (R$)': isPrecoNumerico(item.subtotal) ? item.subtotal.toFixed(2) : item.subtotal,
             'Status da Venda': venda.status,
             'Status Pagamento': venda.status_pagamento,
             'Forma Pagamento': venda.forma_pagamento === 'pix' ? 'PIX' : 
@@ -597,15 +616,15 @@ const Vendas = () => {
           'Código': produto.id,
           'Produto': produto.nome,
           'Categoria': produto.categoria || 'Não categorizado',
-          'Preço (R$)': produto.preco.toFixed(2),
+          'Preço (R$)': isPrecoNumerico(produto.preco) ? precoParaNumero(produto.preco).toFixed(2) : produto.preco,
           'Estoque Atual': produto.estoque,
-          'Valor em Estoque (R$)': (produto.preco * produto.estoque).toFixed(2),
+          'Valor em Estoque (R$)': isPrecoNumerico(produto.preco) ? calcularSubtotal(produto.preco, produto.estoque).toFixed(2) : 'N/A',
           'Descrição': produto.descricao || ''
         };
       });
       
       // Ordenar produtos por estoque (do menor para o maior)
-      dadosInventario.sort((a, b) => a['Estoque Atual'] - b['Estoque Atual']);
+      dadosInventario.sort((a, b) => Number(a['Estoque Atual']) - Number(b['Estoque Atual']));
       
       // Preparar dados para o Excel - Planilha de Resumo
       const resumoVendas = {
@@ -614,7 +633,7 @@ const Vendas = () => {
         'Vendas Pendentes': vendasCompletas.filter(v => v.status === 'Pendente').length,
         'Vendas Finalizadas': vendasCompletas.filter(v => v.status === 'Finalizada').length,
         'Total de Produtos em Estoque': todosProdutos.reduce((acc, produto) => acc + produto.estoque, 0),
-        'Valor Total em Estoque (R$)': todosProdutos.reduce((acc, produto) => acc + (produto.preco * produto.estoque), 0).toFixed(2),
+        'Valor Total em Estoque (R$)': todosProdutos.reduce((acc, produto) => acc + (precoParaNumero(produto.preco) * produto.estoque), 0).toFixed(2),
         'Data do Relatório': format(new Date(), 'dd/MM/yyyy')
       };
       
@@ -690,14 +709,29 @@ const Vendas = () => {
       <Card>
         <CardHeader className="pb-3">
           <CardTitle>Histórico de Vendas</CardTitle>
-          <div className="relative mt-2">
-            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar por cliente ou código da venda..."
-              className="pl-8"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
+          <div className="flex flex-col sm:flex-row gap-4 mt-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar por cliente ou código da venda..."
+                className="pl-8 w-full"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+            <div className="w-full sm:w-64">
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Filtrar por Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todos os Status</SelectItem>
+                  <SelectItem value="Pendente">Pendente</SelectItem>
+                  <SelectItem value="Finalizada">Finalizada</SelectItem>
+                  <SelectItem value="Cancelada">Cancelada</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
@@ -916,8 +950,8 @@ const Vendas = () => {
                         <TableRow key={item.id}>
                           <TableCell>{item.produto_nome}</TableCell>
                           <TableCell className="text-right">{item.quantidade}</TableCell>
-                          <TableCell className="text-right">R$ {item.preco_unitario.toFixed(2)}</TableCell>
-                          <TableCell className="text-right">R$ {item.subtotal.toFixed(2)}</TableCell>
+                          <TableCell className="text-right">{formatarPreco(item.preco_unitario)}</TableCell>
+                          <TableCell className="text-right">{formatarPreco(item.subtotal)}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -1002,7 +1036,7 @@ const Vendas = () => {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Total</p>
-                <p className="font-medium">R$ {vendaEmEdicao?.total.toFixed(2)}</p>
+                <p className="font-medium">{formatarPreco(vendaEmEdicao?.total)}</p>
               </div>
             </div>
             
@@ -1031,8 +1065,8 @@ const Vendas = () => {
                         <TableRow key={item.id}>
                           <TableCell>{item.produto_nome}</TableCell>
                           <TableCell className="text-right">{item.quantidade}</TableCell>
-                          <TableCell className="text-right">R$ {item.preco_unitario.toFixed(2)}</TableCell>
-                          <TableCell className="text-right">R$ {item.subtotal.toFixed(2)}</TableCell>
+                          <TableCell className="text-right">{formatarPreco(item.preco_unitario)}</TableCell>
+                          <TableCell className="text-right">{formatarPreco(item.subtotal)}</TableCell>
                           <TableCell>
                             <Button 
                               variant="ghost" 
@@ -1074,7 +1108,7 @@ const Vendas = () => {
                     <SelectContent>
                       {produtos.map(produto => (
                         <SelectItem key={produto.id} value={produto.id}>
-                          {produto.nome} - R$ {produto.preco.toFixed(2)}
+                          {produto.nome} - {formatarPreco(produto.preco)}
                         </SelectItem>
                       ))}
                     </SelectContent>

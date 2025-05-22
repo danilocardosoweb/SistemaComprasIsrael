@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -7,11 +7,18 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Search, ShoppingCart, Phone, User, Mail, Heart, ArrowRight, Check, Loader2, Users, X, ZoomIn, Calendar, MapPin, Star, Package, Mail as MailIcon } from "lucide-react";
+import { Search, ShoppingCart, Phone, User, Mail, Heart, ArrowRight, Check, Loader2, Users, X, ZoomIn, Calendar, MapPin, Star, Package, Mail as MailIcon, Globe, Briefcase, Plane, BookOpen, BookmarkCheck, Award, Gift, Coffee, Mic, GraduationCap } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { api, Produto, GERACOES } from "@/lib/supabase";
+import { api, Produto, Venda, StatusPagamento, StatusVenda, ItemVenda, GERACOES, supabase } from "@/lib/supabase";
+import { formatarPreco, precoParaNumero, calcularSubtotal } from "@/utils/formatarPreco";
 import { useNavigate } from "react-router-dom";
+
+// Interface para os itens da reserva na página inicial
+interface ItemReserva {
+  produto: Produto;
+  quantidade: number;
+}
 
 // Função para extrair a URL da imagem da descrição
 const extrairUrlImagem = (descricao?: string): string => {
@@ -21,20 +28,99 @@ const extrairUrlImagem = (descricao?: string): string => {
   return match ? match[1] : "";
 };
 
+// Função para limpar a descrição, removendo a URL da imagem
+const limparDescricao = (descricao?: string): string => {
+  if (!descricao) return "";
+  
+  // Remove o prefixo [IMG_URL] e a URL que segue até o próximo espaço
+  return descricao.replace(/\[IMG_URL\]https?:\/\/[^\s]+\s*/, "").trim();
+};
+
+// Função para obter o estilo do ícone com base na categoria
+const getCategoriaIconStyle = (categoria: string): string => {
+  const categoriaLower = categoria.toLowerCase();
+  
+  // Cores específicas para cada categoria
+  if (categoriaLower.includes('congresso')) return 'bg-gradient-to-br from-blue-500 to-blue-700';
+  if (categoriaLower.includes('evento')) return 'bg-gradient-to-br from-pink-500 to-pink-700';
+  if (categoriaLower.includes('viagem')) return 'bg-gradient-to-br from-cyan-500 to-cyan-700';
+  if (categoriaLower.includes('encontro')) return 'bg-gradient-to-br from-green-500 to-green-700';
+  if (categoriaLower.includes('escola')) return 'bg-gradient-to-br from-amber-500 to-amber-700';
+  if (categoriaLower.includes('seminário') || categoriaLower.includes('seminario')) return 'bg-gradient-to-br from-indigo-500 to-indigo-700';
+  if (categoriaLower.includes('produto')) return 'bg-gradient-to-br from-rose-500 to-rose-700';
+  if (categoriaLower.includes('mentoria')) return 'bg-gradient-to-br from-violet-500 to-violet-700';
+  if (categoriaLower.includes('conferência') || categoriaLower.includes('conferencia')) return 'bg-gradient-to-br from-orange-500 to-orange-700';
+  if (categoriaLower.includes('camisa')) return 'bg-gradient-to-br from-emerald-500 to-emerald-700';
+  
+  // Cor padrão para outras categorias
+  return 'bg-gradient-to-br from-purple-500 to-purple-700';
+};
+
+// Função para obter o ícone com base na categoria
+const getCategoriaIcon = (categoria: string) => {
+  const categoriaLower = categoria.toLowerCase();
+  
+  // Ícones específicos para cada categoria
+  if (categoriaLower.includes('congresso')) return <Mic className="h-4 w-4 text-white" />;
+  if (categoriaLower.includes('evento')) return <Calendar className="h-4 w-4 text-white" />;
+  if (categoriaLower.includes('viagem')) return <Plane className="h-4 w-4 text-white" />;
+  if (categoriaLower.includes('encontro')) return <Users className="h-4 w-4 text-white" />;
+  if (categoriaLower.includes('escola')) return <BookOpen className="h-4 w-4 text-white" />;
+  if (categoriaLower.includes('seminário') || categoriaLower.includes('seminario')) return <GraduationCap className="h-4 w-4 text-white" />;
+  if (categoriaLower.includes('produto')) return <Package className="h-4 w-4 text-white" />;
+  if (categoriaLower.includes('mentoria')) return <Award className="h-4 w-4 text-white" />;
+  if (categoriaLower.includes('conferência') || categoriaLower.includes('conferencia')) return <Globe className="h-4 w-4 text-white" />;
+  if (categoriaLower.includes('camisa')) return <Gift className="h-4 w-4 text-white" />;
+  
+  // Ícone padrão para outras categorias
+  return <Package className="h-4 w-4 text-white" />;
+};
+
 
 const PaginaInicial = () => {
   const [produtos, setProdutos] = useState<Produto[]>([]);
-  const [categorias, setCategorias] = useState<string[]>([]);
-  const [categoriaAtiva, setCategoriaAtiva] = useState<string>("todas");
-  const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
-  const [produtoSelecionado, setProdutoSelecionado] = useState<Produto | null>(null);
-  const [showReservaDialog, setShowReservaDialog] = useState(false);
+  const [loadingTextos, setLoadingTextos] = useState(true);
   const [enviandoReserva, setEnviandoReserva] = useState(false);
-  // Estado para controlar a visualização 
+  const [produtoReserva, setProdutoReserva] = useState<Produto | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [categorias, setCategorias] = useState<string[]>([]);
+  const [categoriaAtiva, setCategoriaAtiva] = useState("todas");
   const [imagemAmpliada, setImagemAmpliada] = useState<string | null>(null);
   const [mostrarQRCode, setMostrarQRCode] = useState(false);
   const [mostrarMapa, setMostrarMapa] = useState(false);
+  const [mostrarManualReserva, setMostrarManualReserva] = useState(false);
+  const [mostrarSelecionarProdutos, setMostrarSelecionarProdutos] = useState(false);
+  const [showReservaDialog, setShowReservaDialog] = useState(false);
+  const [produtosSelecionados, setProdutosSelecionados] = useState<ItemReserva[]>([]);
+  const [formReserva, setFormReserva] = useState({
+    nome: "",
+    telefone: "",
+    email: "",
+    geracao: "",
+    observacoes: "",
+    comprovante: null as File | null,
+  });
+  
+  // Textos configuráveis do site
+  const [textosSite, setTextosSite] = useState<TextosSite>({
+    banner_titulo: "Congresso de Famílias 2025",
+    banner_subtitulo: "Famílias 2025",
+    banner_descricao: "Adquira produtos exclusivos do evento! Garanta sua reserva.",
+    banner_badge: "2025",
+    banner_badge_completo: "Evento Especial 2025",
+    banner_local: "Igreja Vida Nova Hortolândia",
+    banner_data: "Maio",
+    banner_botao_texto: "Ver Produtos",
+    pagina_inicial_titulo: "Sistema de Reservas",
+    pagina_inicial_subtitulo: "Congresso de Famílias 2025",
+    pagina_inicial_descricao: "Facilitando o acesso aos produtos exclusivos.",
+    footer_descricao: "Facilitando o acesso aos produtos exclusivos.",
+    footer_contato_telefone: "(19) 99165-9221",
+    footer_contato_email: "contato@geracaoisrael.com.br",
+    footer_contato_endereco: "Av. Thereza Ana Cecon Breda, 2065 - Jardim das Colinas, Hortolândia - SP",
+    footer_copyright: "Geração Israel. Todos os direitos reservados."
+  });
   // Estado para controlar o pop-up de confirmação da reserva
   const [mostrarConfirmacao, setMostrarConfirmacao] = useState(false);
   const [dadosReserva, setDadosReserva] = useState({
@@ -49,18 +135,46 @@ const PaginaInicial = () => {
   // CNPJ para pagamento PIX
   const cnpjPix = "44.319.844/0001-75";
   const [mostrarQRCodePix, setMostrarQRCodePix] = useState(false);
-  const [mostrarManualReserva, setMostrarManualReserva] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
 
   // Filtrar produtos com base na categoria e termo de busca
-  const produtosFiltrados = produtos.filter(produto => 
+  const produtosFiltrados = useMemo(() => produtos.filter(produto => 
     (categoriaAtiva === "todas" || produto.categoria === categoriaAtiva) &&
     (produto.nome.toLowerCase().includes(searchTerm.toLowerCase()) || 
      produto.descricao?.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
+  ), [produtos, categoriaAtiva, searchTerm]);
+
+  // Carregar textos do site quando o componente for montado
+  useEffect(() => {
+    carregarTextosSite();
+  }, []);
 
   // Carregar produtos ao montar o componente
+  // Carregar textos do site
+  const carregarTextosSite = async () => {
+    setLoadingTextos(true);
+    try {
+      // Buscar os textos do site ordenados por data de atualização (mais recente primeiro)
+      const { data, error } = await supabase
+        .from('site_textos')
+        .select('*')
+        .order('updated_at', { ascending: false })
+        .limit(1);
+      
+      if (error) throw error;
+      
+      if (data && data.length > 0) {
+        console.log('Textos do site carregados:', data[0]);
+        setTextosSite(data[0]);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar textos do site:', error);
+    } finally {
+      setLoadingTextos(false);
+    }
+  };
+
   useEffect(() => {
     const carregarProdutos = async () => {
       try {
@@ -86,8 +200,47 @@ const PaginaInicial = () => {
   }, [toast]);
 
   const handleReservaClick = (produto: Produto) => {
-    setProdutoSelecionado(produto);
+    setProdutoReserva(produto);
+    // Inicializar a lista de produtos selecionados com o produto atual
+    setProdutosSelecionados([{ produto, quantidade: 1 }]);
     setShowReservaDialog(true);
+  };
+  
+  // Função para adicionar um produto à lista de produtos selecionados
+  const adicionarProduto = (produto: Produto) => {
+    // Verificar se o produto já está na lista
+    const produtoExistente = produtosSelecionados.find(item => item.produto.id === produto.id);
+    
+    if (produtoExistente) {
+      // Se o produto já existe, aumentar a quantidade
+      setProdutosSelecionados(produtosSelecionados.map(item => 
+        item.produto.id === produto.id 
+          ? { ...item, quantidade: item.quantidade + 1 } 
+          : item
+      ));
+    } else {
+      // Se o produto não existe, adicionar à lista
+      setProdutosSelecionados([...produtosSelecionados, { produto, quantidade: 1 }]);
+    }
+  };
+  
+  // Função para remover um produto da lista de produtos selecionados
+  const removerProduto = (produtoId: string) => {
+    setProdutosSelecionados(produtosSelecionados.filter(item => item.produto.id !== produtoId));
+  };
+  
+  // Função para alterar a quantidade de um produto
+  const alterarQuantidadeProduto = (produtoId: string, quantidade: number) => {
+    if (quantidade <= 0) {
+      removerProduto(produtoId);
+      return;
+    }
+    
+    setProdutosSelecionados(produtosSelecionados.map(item => 
+      item.produto.id === produtoId 
+        ? { ...item, quantidade } 
+        : item
+    ));
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -129,152 +282,134 @@ const PaginaInicial = () => {
     }
   };
 
-  const handleEnviarReserva = async () => {
-    if (!dadosReserva.nome || !dadosReserva.telefone || !dadosReserva.geracao || !dadosReserva.formaPagamento) {
+  const handleEnviarReserva = () => {
+    // Validar se há produtos selecionados
+    if (produtosSelecionados.length === 0) {
       toast({
-        title: "Campos obrigatórios",
-        description: "Por favor, preencha seu nome, telefone, geração e forma de pagamento para continuar.",
+        title: "Nenhum produto selecionado",
+        description: "Por favor, selecione pelo menos um produto para reservar.",
         variant: "destructive",
       });
       return;
     }
     
-    // Verificar se o comprovante de pagamento foi anexado para pagamentos PIX
-    if (dadosReserva.formaPagamento === 'pix' && !dadosReserva.comprovantePagamento) {
+    // Validar campos obrigatórios
+    if (!dadosReserva.nome || !dadosReserva.telefone || !dadosReserva.formaPagamento || !dadosReserva.geracao) {
+      toast({
+        title: "Campos obrigatórios",
+        description: "Por favor, preencha todos os campos obrigatórios (Nome, Telefone, Geração e Forma de Pagamento).",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // Se a forma de pagamento for PIX, o comprovante é obrigatório
+    if (dadosReserva.formaPagamento === "pix" && !dadosReserva.comprovantePagamento) {
       toast({
         title: "Comprovante obrigatório",
-        description: "Por favor, anexe o comprovante de pagamento para pagamentos via PIX.",
+        description: "Para pagamento via PIX, é necessário anexar o comprovante de pagamento.",
         variant: "destructive",
       });
       return;
     }
-
-    if (!produtoSelecionado) {
-      toast({
-        title: "Erro na reserva",
-        description: "Não foi possível identificar o produto selecionado.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Mostrar pop-up de confirmação em vez de enviar imediatamente
+    
+    // Mostrar o diálogo de confirmação
     setMostrarConfirmacao(true);
   };
 
   // Função para processar a reserva após confirmação
   const processarReserva = async () => {
-    setMostrarConfirmacao(false);
-    setEnviandoReserva(true);
-
+    if (produtosSelecionados.length === 0) return;
+    
     try {
-      // Preparar os dados para a API
-      const dadosAPI: any = {
-        nome: dadosReserva.nome,
+      setEnviandoReserva(true);
+      setMostrarConfirmacao(false);
+      
+      // Verificar se todos os produtos têm estoque disponível
+      const produtosSemEstoque = produtosSelecionados.filter(item => item.produto.estoque < item.quantidade);
+      
+      if (produtosSemEstoque.length > 0) {
+        toast({
+          title: "Produtos indisponíveis",
+          description: `Desculpe, os seguintes produtos não têm estoque suficiente: ${produtosSemEstoque.map(item => item.produto.nome).join(", ")}`,
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // Não precisamos atualizar o estoque aqui, pois isso será feito pela API ao criar a venda
+
+      // Calcular o valor total da reserva
+      const valorTotal = produtosSelecionados.reduce(
+        (total: number, item) => {
+          // Usar a função precoParaNumero para garantir que o preço seja convertido corretamente
+          const precoNumerico = precoParaNumero(item.produto.preco);
+          return total + (precoNumerico * item.quantidade);
+        }, 
+        0
+      );
+      
+      // Criar venda (reserva)
+      const venda: Omit<Venda, 'id' | 'created_at'> = {
+        cliente_nome: dadosReserva.nome,
         telefone: dadosReserva.telefone,
-        email: dadosReserva.email || undefined,
-        geracao: dadosReserva.geracao,  // Agora é obrigatório
-        forma_pagamento: dadosReserva.formaPagamento, // Campo obrigatório de forma de pagamento
-        observacoes: dadosReserva.observacoes || undefined,
-        produto_id: produtoSelecionado.id,
-        produto_nome: produtoSelecionado.nome,
-        preco_unitario: produtoSelecionado.preco,
-        quantidade: 1 // Por padrão, reservamos apenas 1 unidade
+        email: dadosReserva.email,
+        geracao: dadosReserva.geracao,
+        observacoes: dadosReserva.observacoes,
+        forma_pagamento: dadosReserva.formaPagamento,
+        status_pagamento: "Pendente" as StatusPagamento,
+        status: "Pendente" as StatusVenda,
+        total: valorTotal,
+        data_venda: new Date().toISOString(),
+        tipo: "reserva"
       };
       
-      // Registrar a reserva no banco de dados
-      const reserva = await api.reservas.criar(dadosAPI);
+      // Preparar os itens da venda
+      const itens = produtosSelecionados.map(item => {
+        // Verificar se o preço é um número ou string
+        const precoNumerico = typeof item.produto.preco === 'number' 
+          ? item.produto.preco 
+          : 0; // Se for "Consulte Valores", considerar como 0 para o cálculo
+        
+        return {
+          produto_id: item.produto.id,
+          produto_nome: item.produto.nome,
+          quantidade: item.quantidade,
+          preco_unitario: item.produto.preco,
+          subtotal: precoNumerico * item.quantidade
+        };
+      });
       
-      // Se tiver comprovante de pagamento, fazer upload e atualizar a venda
+      // Criar a venda no banco de dados
+      const vendaResult = await api.vendas.criar(venda, itens);
+
+      if (!vendaResult) {
+        throw new Error("Erro ao criar reserva");
+      }
+      
+      // Os itens já foram adicionados na criação da venda
+
+      // Se tiver comprovante, fazer upload
       if (dadosReserva.comprovantePagamento) {
         try {
-          console.log('Iniciando upload do comprovante...');
+          // Fazer upload do comprovante
+          const uploadResult = await api.vendas.uploadComprovante(dadosReserva.comprovantePagamento);
           
-          // Verificar se o arquivo é válido
-          if (dadosReserva.comprovantePagamento.size === 0) {
-            throw new Error('Arquivo de comprovante vazio ou inválido');
+          if (uploadResult) {
+            // Atualizar a venda com a URL do comprovante
+            await api.vendas.atualizarComprovante(vendaResult.id, String(uploadResult));
           }
-          
-          // Upload do comprovante com várias tentativas
-          let urlComprovante = null;
-          let tentativas = 0;
-          const maxTentativas = 2;
-          
-          while (!urlComprovante && tentativas < maxTentativas) {
-            tentativas++;
-            console.log(`Tentativa ${tentativas} de upload do comprovante`);
-            
-            try {
-              urlComprovante = await api.vendas.uploadComprovante(dadosReserva.comprovantePagamento);
-            } catch (erroTentativa) {
-              console.error(`Erro na tentativa ${tentativas}:`, erroTentativa);
-              // Aguardar um pouco antes da próxima tentativa
-              if (tentativas < maxTentativas) {
-                await new Promise(resolve => setTimeout(resolve, 1000));
-              }
-            }
-          }
-          
-          // Atualizar a venda com a URL do comprovante apenas se o upload foi bem-sucedido
-          if (urlComprovante) {
-            console.log('Upload bem-sucedido, atualizando venda com URL:', 
-              typeof urlComprovante === 'string' && urlComprovante.length > 50 ? 
-                urlComprovante.substring(0, 50) + '...' : urlComprovante
-            );
-            
-            try {
-              // Verificar se é uma URL base64 (abordagem alternativa)
-              const isBase64 = typeof urlComprovante === 'string' && 
-                (urlComprovante.startsWith('data:image/') || urlComprovante.startsWith('data:application/'));
-              
-              if (isBase64) {
-                console.log('Detectado comprovante em formato base64, salvando diretamente no banco');
-              }
-              
-              // Usar a nova função específica para atualizar o comprovante
-              const vendaAtualizada = await api.vendas.atualizarComprovante(reserva.id, urlComprovante);
-              
-              console.log('Venda atualizada com sucesso com o comprovante');
-              if (vendaAtualizada && vendaAtualizada.comprovante_url) {
-                console.log('URL do comprovante salva:', 
-                  typeof vendaAtualizada.comprovante_url === 'string' && vendaAtualizada.comprovante_url.length > 50 ? 
-                    vendaAtualizada.comprovante_url.substring(0, 50) + '...' : 
-                    vendaAtualizada.comprovante_url
-                );
-              }
-            } catch (erroAtualizacao) {
-              console.error('Erro ao atualizar venda com comprovante:', erroAtualizacao);
-              toast({
-                title: "Comprovante enviado, mas não vinculado",
-                description: "O comprovante foi enviado, mas houve um problema ao vinculá-lo à sua reserva. O administrador será notificado.",
-                variant: "destructive",
-              });
-            }
-          } else {
-            // Informar ao usuário que o comprovante não foi enviado, mas a reserva foi criada
-            console.error('Não foi possível fazer upload do comprovante após várias tentativas');
-            toast({
-              title: "Reserva criada, mas comprovante não enviado",
-              description: "Sua reserva foi registrada, mas houve um problema ao enviar o comprovante. Por favor, envie-o diretamente pelo WhatsApp para (11) 99999-9999.",
-              variant: "destructive",
-            });
-          }
-        } catch (erroUpload) {
-          console.error("Erro ao processar upload do comprovante:", erroUpload);
-          // Informar ao usuário que o comprovante não foi enviado, mas a reserva foi criada
+        } catch (error: any) {
+          console.error("Erro ao fazer upload do comprovante:", error);
+          // Não interromper o fluxo se o upload falhar
           toast({
-            title: "Reserva criada, mas comprovante não enviado",
-            description: "Sua reserva foi registrada, mas houve um problema ao enviar o comprovante. Por favor, envie-o diretamente pelo WhatsApp para (11) 99999-9999.",
+            title: "Aviso",
+            description: "Sua reserva foi registrada, mas houve um problema ao enviar o comprovante. Por favor, envie o comprovante por WhatsApp.",
             variant: "destructive",
           });
         }
       }
-      
-      toast({
-        title: "Reserva realizada com sucesso!",
-        description: "Seu produto foi reservado. Entraremos em contato para confirmar o pagamento.",
-      });
-      
+
       // Recarregar a lista de produtos para atualizar o estoque
       const carregarProdutosAtualizados = async () => {
         try {
@@ -289,9 +424,18 @@ const PaginaInicial = () => {
         }
       };
       
-      carregarProdutosAtualizados();
+      await carregarProdutosAtualizados();
       
+      // Exibir mensagem de sucesso
+      toast({
+        title: "Reserva realizada com sucesso",
+        description: `Sua reserva foi registrada com sucesso! ID da reserva: ${String(vendaResult.id)}`,
+        variant: "default",
+      });
+
+      // Fechar o diálogo e resetar o formulário
       setShowReservaDialog(false);
+      setProdutosSelecionados([]);
       setDadosReserva({
         nome: "",
         telefone: "",
@@ -302,9 +446,10 @@ const PaginaInicial = () => {
         observacoes: ""
       });
     } catch (error: any) {
+      console.error("Erro ao processar reserva:", error);
       toast({
-        title: "Erro ao solicitar reserva",
-        description: error.message || "Ocorreu um erro ao solicitar a reserva.",
+        title: "Erro ao processar reserva",
+        description: error.message || "Ocorreu um erro ao processar sua reserva. Por favor, tente novamente.",
         variant: "destructive",
       });
     } finally {
@@ -365,20 +510,24 @@ const PaginaInicial = () => {
             <div className="md:w-1/2 space-y-1 md:space-y-2 group-hover:space-y-4 text-center md:text-left transition-all duration-500">
               <div className="inline-flex items-center px-2 py-0.5 rounded-full bg-yellow-400 text-purple-900 font-bold text-xs mb-1 group-hover:mb-2 animate-pulse">
                 <Star className="mr-0.5 h-3 w-3 group-hover:h-4 group-hover:w-4 group-hover:mr-1" />
-                <span className="hidden group-hover:inline">Evento Especial 2025</span>
-                <span className="inline group-hover:hidden">2025</span>
+                <span className="hidden group-hover:inline">{textosSite.banner_badge_completo}</span>
+                <span className="inline group-hover:hidden">{textosSite.banner_badge}</span>
               </div>
               <h2 className="text-sm md:text-base group-hover:text-2xl group-hover:md:text-3xl font-extrabold mb-1 group-hover:mb-2 text-white drop-shadow-lg transition-all duration-500">
-                <span className="hidden group-hover:inline">Congresso de <span className="text-yellow-300">Famílias</span> 2025</span>
-                <span className="inline group-hover:hidden"><span className="text-yellow-300">Famílias</span> 2025</span>
+                <span className="hidden group-hover:inline">{textosSite.banner_titulo.split(' ').map((word, index, array) => 
+                  index === array.length - 2 ? <span key={index}><span className="text-yellow-300">{word}</span></span> : 
+                  index === array.length - 1 ? <span key={index}> {word}</span> : 
+                  <span key={index}>{word} </span>
+                )}</span>
+                <span className="inline group-hover:hidden">{textosSite.banner_subtitulo}</span>
               </h2>
               <p className="text-white/90 mb-1 group-hover:mb-4 max-w-lg text-[10px] md:text-xs group-hover:text-sm group-hover:md:text-base transition-all duration-500 line-clamp-1 group-hover:line-clamp-none">
-                Adquira produtos exclusivos do evento! Garanta sua reserva.
+                {textosSite.banner_descricao}
               </p>
               <div className="hidden group-hover:flex flex-wrap gap-2 group-hover:gap-3 justify-center md:justify-start transition-all duration-500">
                 <div className="flex items-center bg-white/20 backdrop-blur-sm px-3 py-1 rounded-lg text-sm">
                   <Calendar className="h-4 w-4 text-yellow-300 mr-2" />
-                  <span>Maio</span>
+                  <span>{textosSite.banner_data}</span>
                 </div>
                 <div 
                   className="flex items-center bg-white/20 backdrop-blur-sm px-3 py-1 rounded-lg text-sm cursor-pointer hover:bg-white/30 transition-colors duration-300"
@@ -386,7 +535,7 @@ const PaginaInicial = () => {
                   title="Clique para ver no mapa"
                 >
                   <MapPin className="h-4 w-4 text-yellow-300 mr-2" />
-                  <span>Igreja Vida Nova Hortolândia</span>
+                  <span>{textosSite.banner_local}</span>
                 </div>
               </div>
             </div>
@@ -406,7 +555,7 @@ const PaginaInicial = () => {
                     className="bg-yellow-400 hover:bg-yellow-500 text-purple-900 font-bold text-[10px] group-hover:text-sm py-0 group-hover:py-1 h-6 group-hover:h-8 min-w-0 px-2 group-hover:px-3"
                     size="sm"
                   >
-                    <span className="hidden group-hover:inline">Ver Produtos</span> <ArrowRight className="group-hover:ml-1 h-3 w-3" />
+                    <span className="hidden group-hover:inline">{textosSite.banner_botao_texto}</span> <ArrowRight className="group-hover:ml-1 h-3 w-3" />
                   </Button>
                 </div>
               </div>
@@ -434,10 +583,10 @@ const PaginaInicial = () => {
                   Vida Nova Hortolândia
                 </span>
                 <h1 className="text-4xl md:text-5xl font-bold tracking-tight leading-tight text-white drop-shadow-md">
-                  <span className="bg-gradient-to-r from-yellow-300 to-yellow-500 text-transparent bg-clip-text">Sistema de Reservas</span>
+                  <span className="bg-gradient-to-r from-yellow-300 to-yellow-500 text-transparent bg-clip-text">{textosSite.pagina_inicial_titulo}</span>
                   <span 
                     className="block mt-2 text-2xl md:text-3xl font-medium bg-gradient-to-r from-yellow-300 to-yellow-500 text-transparent bg-clip-text"
-                  >Congresso de Famílias 2025</span>
+                  >{textosSite.pagina_inicial_subtitulo}</span>
                 </h1>
               </div>
               
@@ -474,19 +623,69 @@ const PaginaInicial = () => {
         </div>
       </div>
 
-      {/* Search and Filter Section */}
-      <div className="bg-white rounded-lg shadow-sm border p-4">
-        <div className="grid gap-4 md:grid-cols-3">
-          <div className="relative col-span-2">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar produtos..."
-              className="pl-10"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
+      {/* Search and Filter Section - Design Moderno */}
+      <div className="bg-gradient-to-r from-purple-50 to-purple-100 rounded-xl shadow-md border-0 p-5 mb-6">
+        <div className="flex flex-col md:flex-row items-center gap-4">
+          {/* Título da seção */}
+          <div className="flex-shrink-0 hidden md:block">
+            <div className="bg-purple-600 text-white p-3 rounded-full shadow-md">
+              <Search className="h-5 w-5" />
+            </div>
           </div>
-          {/* Elemento de abas de categorias removido conforme solicitado */}
+          
+          {/* Área de busca e filtros */}
+          <div className="flex-grow w-full">
+            <div className="bg-white rounded-xl shadow-sm p-2 flex flex-col md:flex-row items-center gap-3">
+              {/* Campo de busca */}
+              <div className="relative flex-grow w-full">
+                <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-purple-400">
+                  <Search className="h-4 w-4" />
+                </div>
+                <Input
+                  placeholder="Buscar produtos..."
+                  className="pl-10 border-0 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 h-11 bg-gray-50 rounded-lg"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+              
+              {/* Separador vertical */}
+              <div className="hidden md:block h-8 w-px bg-gray-200"></div>
+              
+              {/* Filtro de categorias */}
+              {categorias.length > 0 && (
+                <div className="relative w-full md:w-auto md:min-w-[220px]">
+                  <Select
+                    value={categoriaAtiva}
+                    onValueChange={setCategoriaAtiva}
+                  >
+                    <SelectTrigger className="border-0 shadow-none focus:ring-0 h-11 bg-gradient-to-r from-purple-100 to-purple-200 rounded-lg font-medium text-purple-800">
+                      <SelectValue placeholder="Filtrar por categoria" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-60 rounded-lg border-0 shadow-lg p-1">
+                      <div className="p-2 border-b border-gray-100">
+                        <div className="text-xs font-medium text-gray-500 mb-2 px-2">CATEGORIAS</div>
+                        <SelectItem value="todas" className="rounded-md mb-1 font-medium bg-purple-50 hover:bg-purple-100 transition-colors">
+                          Todas as categorias
+                        </SelectItem>
+                      </div>
+                      <div className="p-2 grid gap-1">
+                        {categorias.map((categoria) => (
+                          <SelectItem 
+                            key={categoria} 
+                            value={categoria} 
+                            className={`rounded-md font-medium ${categoriaAtiva === categoria ? 'bg-purple-100' : 'hover:bg-gray-50'} transition-colors`}
+                          >
+                            {categoria}
+                          </SelectItem>
+                        ))}
+                      </div>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -506,7 +705,7 @@ const PaginaInicial = () => {
           ))
         ) : produtosFiltrados.length > 0 ? (
           produtosFiltrados.map((produto) => (
-            <Card key={produto.id} className="overflow-hidden transition-all duration-300 hover:shadow-lg group border-0 shadow">
+            <Card key={produto.id} className="overflow-hidden transition-all duration-300 hover:shadow-lg group border-0 shadow relative">
               <div className="relative">
                 {/* Imagem do produto */}
                 <div className="h-60 bg-gray-100 relative overflow-hidden">
@@ -568,8 +767,27 @@ const PaginaInicial = () => {
                 </Badge>
                 
                 <p className="text-2xl font-bold text-purple-700 mt-2">
-                  R$ {produto.preco.toFixed(2).replace('.', ',')}
+                  {formatarPreco(produto.preco)}
                 </p>
+                
+                {produto.opcao_parcelamento && (
+                  <p className="text-xs font-medium bg-purple-100 text-purple-700 inline-block px-2 py-0.5 rounded-full mt-1">
+                    {produto.opcao_parcelamento === 'À vista' ? produto.opcao_parcelamento : `Em ${produto.opcao_parcelamento}`}
+                  </p>
+                )}
+                
+                {/* Descrição do produto - com formatação melhorada */}
+                {limparDescricao(produto.descricao) && (
+                  <div className="mt-3 pt-2 border-t border-gray-100">
+                    <div className="flex items-center gap-2 mb-1">
+                      <div className="w-1 h-12 bg-purple-600 rounded"></div>
+                      <h4 className="text-xs font-semibold text-purple-700">DESCRIÇÃO</h4>
+                    </div>
+                    <p className="text-sm text-gray-600 line-clamp-2 hover:line-clamp-none transition-all duration-300">
+                      {limparDescricao(produto.descricao)}
+                    </p>
+                  </div>
+                )}
               </CardContent>
               
               <CardFooter className="px-4 pb-4 pt-0">
@@ -645,43 +863,129 @@ const PaginaInicial = () => {
         </DialogContent>
       </Dialog>
       
-      {/* Reserva Dialog */}
+      {/* Diálogo de Reserva */}
       <Dialog open={showReservaDialog} onOpenChange={setShowReservaDialog}>
-        <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-hidden flex flex-col p-4 md:p-6">
           <DialogHeader>
-            <DialogTitle className="text-xl font-bold text-purple-800">Reservar Produto</DialogTitle>
+            <DialogTitle>Reservar Produtos</DialogTitle>
             <DialogDescription>
-              Preencha seus dados para reservar "{produtoSelecionado?.nome}".
+              Selecione os produtos que deseja reservar e preencha seus dados.
             </DialogDescription>
           </DialogHeader>
           
-          <div className="grid grid-cols-1 gap-6 py-4">
-            {/* Informações do Produto */}
-            <div className="flex items-center space-x-4 p-3 bg-gray-50 rounded-lg">
-              <div className="flex-shrink-0 w-16 h-16 bg-white rounded-md overflow-hidden border">
-                {extrairUrlImagem(produtoSelecionado?.descricao) ? (
-                  <img 
-                    src={extrairUrlImagem(produtoSelecionado?.descricao)} 
-                    alt={produtoSelecionado?.nome}
-                    className="w-full h-full object-contain"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-gray-100">
-                    <span className="text-xl font-light">{produtoSelecionado?.nome?.charAt(0)}</span>
+          <div className="grid gap-6 py-4 overflow-y-auto pr-2 flex-grow">
+            {/* Lista de produtos selecionados */}
+            <div className="bg-gray-50 p-3 md:p-4 rounded-md border border-gray-200">
+              <div className="flex justify-between items-center mb-3">
+                <h3 className="font-semibold text-purple-800">Produtos selecionados</h3>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => {
+                    // Abrir um diálogo para selecionar mais produtos
+                    const categoriasDisponiveis = [...new Set(produtos.map(p => p.categoria))].filter(Boolean);
+                    setCategorias(categoriasDisponiveis);
+                    setCategoriaAtiva("todas");
+                    setSearchTerm("");
+                    setMostrarSelecionarProdutos(true);
+                  }}
+                  className="text-xs"
+                >
+                  <Package className="mr-1 h-3 w-3" /> Adicionar mais produtos
+                </Button>
+              </div>
+              
+              {produtosSelecionados.length === 0 ? (
+                <div className="text-center py-4 text-gray-500">
+                  <Package className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <p>Nenhum produto selecionado</p>
+                </div>
+              ) : (
+                <div className="space-y-2 max-h-40 overflow-y-auto pr-2">
+                  {produtosSelecionados.map((item) => (
+                    <div key={item.produto.id} className="flex items-center gap-2 bg-white p-2 rounded-md border border-gray-200">
+                      <div className="w-10 h-10 md:w-12 md:h-12 bg-white rounded-md overflow-hidden border border-gray-200 flex-shrink-0">
+                        <img 
+                          src={extrairUrlImagem(item.produto.descricao) || "/placeholder-image.jpg"} 
+                          alt={item.produto.nome} 
+                          className="w-full h-full object-contain"
+                          onError={(e) => {
+                            e.currentTarget.src = "/placeholder-image.jpg";
+                          }}
+                        />
+                      </div>
+                      <div className="flex-1 min-w-0 pr-2">
+                        <h4 className="font-medium text-xs md:text-sm mb-0.5" title={item.produto.nome}>
+                          {item.produto.nome.length > 25 ? 
+                            <>
+                              <span className="inline-block w-full whitespace-normal break-words">{item.produto.nome}</span>
+                            </> : 
+                            item.produto.nome
+                          }
+                        </h4>
+                        <p className="text-purple-600 font-bold text-xs md:text-sm">
+                          {formatarPreco(item.produto.preco)}
+                        </p>
+                      </div>
+                      <div className="flex items-center space-x-0.5 md:space-x-1">
+                        <Button 
+                          variant="outline" 
+                          size="icon" 
+                          className="h-5 w-5 md:h-6 md:w-6 rounded-full"
+                          onClick={() => alterarQuantidadeProduto(item.produto.id, item.quantidade - 1)}
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/></svg>
+                          <span className="sr-only">Diminuir</span>
+                        </Button>
+                        <span className="w-5 md:w-6 text-center text-xs md:text-sm">{item.quantidade}</span>
+                        <Button 
+                          variant="outline" 
+                          size="icon" 
+                          className="h-5 w-5 md:h-6 md:w-6 rounded-full"
+                          onClick={() => {
+                            // Converter a quantidade para número antes de somar
+                            const quantidadeAtual = Number(item.quantidade);
+                            alterarQuantidadeProduto(item.produto.id, quantidadeAtual + 1);
+                          }}
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+                          <span className="sr-only">Aumentar</span>
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-5 w-5 md:h-6 md:w-6 text-red-500 hover:text-red-700 hover:bg-red-50"
+                          onClick={() => removerProduto(item.produto.id)}
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                          <span className="sr-only">Remover</span>
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              
+              {produtosSelecionados.length > 0 && (
+                <div className="mt-2 pt-2 md:mt-3 md:pt-3 border-t border-gray-200 flex justify-between items-center">
+                  <div>
+                    <span className="text-sm text-gray-600">Total:</span>
+                    <span className="ml-2 font-bold text-purple-700">
+                      R$ {produtosSelecionados.reduce((total, item) => total + (item.produto.preco * item.quantidade), 0).toFixed(2)}
+                    </span>
                   </div>
-                )}
-              </div>
-              <div>
-                <h3 className="font-medium">{produtoSelecionado?.nome}</h3>
-                <p className="text-purple-700 font-bold">R$ {produtoSelecionado?.preco.toFixed(2).replace('.', ',')}</p>
-              </div>
+                  <div className="text-xs text-gray-500">
+                    {produtosSelecionados.reduce((total, item) => total + item.quantidade, 0)} item(ns)
+                  </div>
+                </div>
+              )}
             </div>
             
             {/* Formulário de Dados */}
-            <div className="space-y-4">
+            <div className="space-y-3 md:space-y-4">
               <h3 className="font-medium text-gray-700">Seus dados</h3>
               
-              <div className="grid gap-3">
+              <div className="grid gap-2 md:gap-3">
                 <div className="grid gap-1.5">
                   <Label htmlFor="nome" className="flex items-center text-sm font-medium">
                     <User className="mr-2 h-4 w-4 text-purple-600" />
@@ -697,7 +1001,7 @@ const PaginaInicial = () => {
                   />
                 </div>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-3">
                   <div className="grid gap-1.5">
                     <Label htmlFor="telefone" className="flex items-center text-sm font-medium">
                       <Phone className="mr-2 h-4 w-4 text-purple-600" />
@@ -799,15 +1103,17 @@ const PaginaInicial = () => {
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2 text-purple-600"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
                     Comprovante de Pagamento {dadosReserva.formaPagamento === 'pix' && '*'}
                   </Label>
-                  <div className="flex items-center space-x-2">
-                    <Input
-                      id="comprovantePagamento"
-                      name="comprovantePagamento"
-                      type="file"
-                      accept="image/*,.pdf"
-                      onChange={handleFileChange}
-                      className="border-gray-300 flex-1"
-                    />
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-2">
+                    <div className="flex-1 mb-1 sm:mb-0">
+                      <Input
+                        id="comprovantePagamento"
+                        name="comprovantePagamento"
+                        type="file"
+                        accept="image/*,.pdf"
+                        onChange={handleFileChange}
+                        className="border-gray-300 text-xs md:text-sm w-full"
+                      />
+                    </div>
                     {dadosReserva.comprovantePagamento && (
                       <div className="text-xs text-green-600 flex items-center">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-1"><polyline points="20 6 9 17 4 12"></polyline></svg>
@@ -848,37 +1154,33 @@ const PaginaInicial = () => {
               </div>
             </div>
             
-            {/* Alerta de Formas de Pagamento */}
-            <div className="bg-purple-50 border border-purple-200 rounded-md p-4">
+            {/* Alerta de Formas de Pagamento - Versão mais compacta */}
+            <div className="bg-purple-50 border border-purple-200 rounded-md p-3">
               <div className="flex items-start">
                 <div className="flex-shrink-0 text-purple-600">
                   📌
                 </div>
                 <div className="ml-3">
                   <h3 className="text-sm font-medium text-purple-800">Atenção! Forma de Pagamento</h3>
-                  <div className="mt-2 text-sm text-purple-700 space-y-1">
+                  <div className="mt-1 text-xs text-purple-700 space-y-1">
                     <p>Os pagamentos serão aceitos somente através das seguintes opções:</p>
                     <p className="flex items-center">✅ <span className="ml-1">PIX no nome da Igreja Vida Nova Hortolândia</span></p>
                     <p className="flex items-center">✅ <span className="ml-1">Maquininhas de cartão disponíveis dentro da igreja</span></p>
                     
-                    <p className="mt-2">Após realizar o pagamento via PIX, envie o comprovante para o número:</p>
+                    <p className="mt-1">Após realizar o pagamento via PIX, envie o comprovante para:</p>
                     <p className="font-medium">📲 (19) 99165-9221 – Danilo Cardoso</p>
-                    
-                    <p className="mt-2">A confirmação do pagamento é essencial para validar sua compra.</p>
-                    <p>Agradecemos a compreensão e confiança!</p>
                   </div>
                 </div>
               </div>
             </div>
           </div>
           
-          <div className="flex flex-col sm:flex-row justify-end gap-3 mt-4 sticky bottom-0 bg-white pt-2 border-t">
-            <Button variant="outline" onClick={() => setShowReservaDialog(false)}>Cancelar</Button>
+          <div className="flex flex-col sm:flex-row justify-end gap-2 sm:gap-3 mt-3 sm:mt-4 bg-white pt-2 border-t flex-shrink-0">
+            <Button variant="outline" onClick={() => setShowReservaDialog(false)} className="text-sm py-1 h-9 sm:h-10">Cancelar</Button>
             <Button 
               onClick={handleEnviarReserva} 
-              className="bg-purple-600 hover:bg-purple-700 text-white"
+              className="bg-purple-600 hover:bg-purple-700 text-white text-sm py-1 h-9 sm:h-10"
               disabled={enviandoReserva}
-              size="lg"
             >
               {enviandoReserva ? (
                 <>
@@ -896,35 +1198,213 @@ const PaginaInicial = () => {
         </DialogContent>
       </Dialog>
 
+      {/* Diálogo para selecionar mais produtos */}
+      <Dialog open={mostrarSelecionarProdutos} onOpenChange={setMostrarSelecionarProdutos}>
+        <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Selecionar Produtos</DialogTitle>
+            <DialogDescription>
+              Escolha os produtos que deseja adicionar à sua reserva.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="py-4">
+            {/* Barra de pesquisa */}
+            <div className="mb-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar produtos..."
+                  className="pl-10"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+            </div>
+            
+            {/* Categorias */}
+            <div className="mb-4 overflow-x-auto pb-2">
+              <div className="flex space-x-2">
+                <Button
+                  variant={categoriaAtiva === "todas" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setCategoriaAtiva("todas")}
+                  className="whitespace-nowrap"
+                >
+                  Todas as Categorias
+                </Button>
+                {categorias.map((categoria) => (
+                  <Button
+                    key={categoria}
+                    variant={categoriaAtiva === categoria ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setCategoriaAtiva(categoria)}
+                    className="whitespace-nowrap"
+                  >
+                    {categoria}
+                  </Button>
+                ))}
+              </div>
+            </div>
+            
+            {/* Lista de produtos */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[400px] overflow-y-auto pr-2">
+              {produtosFiltrados.map((produto) => {
+                // Verificar se o produto já está selecionado
+                const produtoSelecionado = produtosSelecionados.find(item => item.produto.id === produto.id);
+                
+                return (
+                  <div 
+                    key={produto.id} 
+                    className={`flex items-center gap-3 p-3 rounded-md border ${produtoSelecionado ? 'border-purple-400 bg-purple-50' : 'border-gray-200 bg-white'}`}
+                  >
+                    <div className="w-12 h-12 bg-white rounded-md overflow-hidden border border-gray-200 flex-shrink-0">
+                      <img 
+                        src={extrairUrlImagem(produto.descricao) || "/placeholder-image.jpg"} 
+                        alt={produto.nome} 
+                        className="w-full h-full object-contain"
+                        onError={(e) => {
+                          e.currentTarget.src = "/placeholder-image.jpg";
+                        }}
+                      />
+                    </div>
+                    <div className="flex-1 min-w-0 pr-2">
+                      <h4 className="font-medium text-sm mb-0.5" title={produto.nome}>
+                        {produto.nome.length > 30 ? 
+                          <>
+                            <span className="inline-block w-full whitespace-normal break-words">{produto.nome}</span>
+                          </> : 
+                          produto.nome
+                        }
+                      </h4>
+                      <p className="text-purple-600 font-bold text-sm">
+                        {typeof produto.preco === 'number' 
+                          ? `R$ ${produto.preco.toFixed(2).replace('.', ',')}` 
+                          : produto.preco}
+                      </p>
+                      <p className="text-xs text-gray-500">{produto.estoque} em estoque</p>
+                    </div>
+                    <div>
+                      {produtoSelecionado ? (
+                        <div className="flex items-center space-x-1">
+                          <Button 
+                            variant="outline" 
+                            size="icon" 
+                            className="h-6 w-6 rounded-full"
+                            onClick={() => alterarQuantidadeProduto(produto.id, produtoSelecionado.quantidade - 1)}
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/></svg>
+                          </Button>
+                          <span className="w-6 text-center text-sm">{produtoSelecionado.quantidade}</span>
+                          <Button 
+                            variant="outline" 
+                            size="icon" 
+                            className="h-6 w-6 rounded-full"
+                            onClick={() => alterarQuantidadeProduto(produto.id, produtoSelecionado.quantidade + 1)}
+                            disabled={produtoSelecionado.quantidade >= produto.estoque}
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+                          </Button>
+                        </div>
+                      ) : (
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="h-8 text-xs"
+                          onClick={() => adicionarProduto(produto)}
+                          disabled={produto.estoque <= 0}
+                        >
+                          Adicionar
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+              
+              {produtosFiltrados.length === 0 && (
+                <div className="col-span-2 text-center py-8 text-gray-500">
+                  <Package className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <p>Nenhum produto encontrado</p>
+                </div>
+              )}
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setMostrarSelecionarProdutos(false)}
+            >
+              Cancelar
+            </Button>
+            <Button 
+              onClick={() => setMostrarSelecionarProdutos(false)}
+              className="bg-purple-600 hover:bg-purple-700 text-white"
+            >
+              Concluir seleção
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
       {/* Diálogo de confirmação da reserva */}
       <Dialog open={mostrarConfirmacao} onOpenChange={setMostrarConfirmacao}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-xl font-bold text-purple-800">Confirmar Reserva</DialogTitle>
-            <DialogDescription className="text-purple-700">
-              Você está prestes a reservar o produto. Para retirar, procure Danilo Cardoso ou Tatiane Cardoso da Geração Israel com o comprovante de pagamento.              
-            </DialogDescription>
+            <DialogTitle>Confirmar Reserva</DialogTitle>
           </DialogHeader>
-          <div className="bg-purple-50 border border-purple-200 rounded-md p-4 my-4">
-            <div className="flex items-start">
-              <div className="flex-shrink-0 text-purple-600">
-                📌
+          
+          <div className="py-4 space-y-4">
+            {/* Resumo da reserva */}
+            <div className="bg-purple-50 border border-purple-200 rounded-md p-3">
+              <h3 className="font-medium text-purple-800 mb-2">Resumo da reserva:</h3>
+              <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
+                {produtosSelecionados.map((item) => (
+                  <div key={item.produto.id} className="flex justify-between text-sm">
+                    <span>{item.quantidade}x {item.produto.nome}</span>
+                    <span className="font-medium">
+                      {formatarPreco(calcularSubtotal(item.produto.preco, item.quantidade))}
+                    </span>
+                  </div>
+                ))}
               </div>
-              <div className="ml-3">
-                <h3 className="text-sm font-medium text-purple-800">Informações importantes:</h3>
-                <div className="mt-2 text-sm text-purple-700 space-y-1">
-                  <p>1. Sua reserva será válida por 48 horas.</p>
-                  <p>2. Após o pagamento, envie o comprovante para: (19) 99165-9221.</p>
-                  <p>3. Caso não efetue o pagamento no prazo, sua reserva será cancelada automaticamente.</p>
+              <div className="mt-3 pt-2 border-t border-purple-200 flex justify-between font-bold text-purple-900">
+                <span>Total:</span>
+                <span>{formatarPreco(produtosSelecionados.reduce((total: number, item) => {
+                  // Usar a função precoParaNumero para garantir que o preço seja convertido corretamente
+                  const precoNumerico = precoParaNumero(item.produto.preco);
+                  return total + (precoNumerico * item.quantidade);
+                }, 0))}</span>
+              </div>
+            </div>
+            
+            <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4">
+              <div className="flex">
+                <div className="flex-shrink-0">
+                  <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="ml-3">
+                  <h3 className="text-sm font-medium text-yellow-800">Atenção!</h3>
+                  <div className="mt-2 text-sm text-yellow-700">
+                    <p>Sua reserva será válida por <strong>48 horas</strong>. Após este período, os produtos serão liberados para venda.</p>
+                    <p className="mt-2">Para retirar seus produtos, procure por <strong>Danilo Cardoso</strong> ou <strong>Tatiane Cardoso</strong> do Ministério De Casais com o comprovante de pagamento.</p>
+                    <p className="mt-2">Envie o comprovante para o número: <strong>(19) 99165-9221</strong></p>
+                  </div>
                 </div>
               </div>
             </div>
+            
+            <p className="text-sm text-gray-600">Ao confirmar, você concorda com os termos da reserva e confirma que os dados informados estão corretos.</p>
           </div>
-          <DialogFooter className="flex flex-col sm:flex-row gap-2 sm:justify-between">
+          
+          <DialogFooter className="flex flex-col sm:flex-row gap-3">
             <Button variant="outline" onClick={() => setMostrarConfirmacao(false)}>Cancelar</Button>
             <Button 
               onClick={processarReserva} 
-              className="bg-purple-600 hover:bg-purple-700 text-white"
+              className="bg-green-600 hover:bg-green-700 text-white"
               disabled={enviandoReserva}
             >
               {enviandoReserva ? (
@@ -933,15 +1413,13 @@ const PaginaInicial = () => {
                   Processando...
                 </>
               ) : (
-                <>
-                  <Check className="mr-2 h-4 w-4" />
-                  Sim, confirmar reserva
-                </>
+                <>Sim, confirmar reserva</>
               )}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      
 
       {/* Modal de QR Code */}
       <Dialog open={mostrarQRCode} onOpenChange={setMostrarQRCode}>
@@ -1189,7 +1667,7 @@ const PaginaInicial = () => {
                 </div>
               </div>
               <p className="text-sm text-purple-200 text-center md:text-left mb-4">
-                Facilitando o acesso aos produtos exclusivos.
+                {textosSite.footer_descricao}
               </p>
               <div className="flex space-x-3">
                 <a href="https://www.instagram.com/geracaoisrael" target="_blank" rel="noopener noreferrer" className="bg-white/10 p-2 rounded-full hover:bg-white/20 transition-colors">
@@ -1231,11 +1709,11 @@ const PaginaInicial = () => {
               <ul className="space-y-3">
                 <li className="flex items-center justify-center md:justify-start">
                   <Phone className="h-4 w-4 mr-2 text-yellow-300" />
-                  <span>(19) 99165-9221</span>
+                  <span>{textosSite.footer_contato_telefone}</span>
                 </li>
                 <li className="flex items-center justify-center md:justify-start">
                   <MailIcon className="h-4 w-4 mr-2 text-yellow-300" />
-                  <span>contato@geracaoisrael.com.br</span>
+                  <span>{textosSite.footer_contato_email}</span>
                 </li>
               </ul>
             </div>
@@ -1243,7 +1721,7 @@ const PaginaInicial = () => {
 
           <div className="mt-8 pt-4 border-t border-purple-700 flex flex-col md:flex-row justify-between items-center">
             <p className="text-sm text-purple-300 mb-2 md:mb-0">
-              &copy; {new Date().getFullYear()} Geração Israel. Todos os direitos reservados.
+              &copy; {new Date().getFullYear()} {textosSite.footer_copyright}
             </p>
             <p className="text-xs text-purple-400">
               Desenvolvido com ❤️ por <a href="https://github.com/danilocardosoweb" target="_blank" rel="noopener noreferrer" className="text-yellow-300 hover:underline">Danilo Cardoso</a>
