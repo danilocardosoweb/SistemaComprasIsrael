@@ -1,5 +1,7 @@
 # Log de Alterações - Divino Vendas App
 
+[22/05/2025 13:10] - [pages/PaginaInicial, utils/formatarPreco] - [Implementação de pop-up de alerta para produtos com "Consulte Valores" impedindo reservas diretas] - [Danilo Cardoso]
+
 [22/05/2025 13:05] - [pages/Vendas] - [Adição de filtro de Status ao lado da busca por cliente na página de Vendas] - [Danilo Cardoso]
 
 [22/05/2025 12:55] - [pages/ComprovanteVenda, pages/PaginaInicial] - [Correção da exibição de subtotais nas novas vendas e do total na confirmação de reserva] - [Danilo Cardoso]

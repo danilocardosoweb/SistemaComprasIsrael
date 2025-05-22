@@ -11,7 +11,7 @@ import { Search, ShoppingCart, Phone, User, Mail, Heart, ArrowRight, Check, Load
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { api, Produto, Venda, StatusPagamento, StatusVenda, ItemVenda, GERACOES, supabase } from "@/lib/supabase";
-import { formatarPreco, precoParaNumero, calcularSubtotal } from "@/utils/formatarPreco";
+import { formatarPreco, precoParaNumero, calcularSubtotal, isPrecoConsulta } from "@/utils/formatarPreco";
 import { useNavigate } from "react-router-dom";
 
 // Interface para os itens da reserva na página inicial
@@ -199,11 +199,22 @@ const PaginaInicial = () => {
     carregarProdutos();
   }, [toast]);
 
+  const [showConsulteValoresDialog, setShowConsulteValoresDialog] = useState(false);
+  const [produtoConsulta, setProdutoConsulta] = useState<Produto | null>(null);
+
   const handleReservaClick = (produto: Produto) => {
-    setProdutoReserva(produto);
-    // Inicializar a lista de produtos selecionados com o produto atual
-    setProdutosSelecionados([{ produto, quantidade: 1 }]);
-    setShowReservaDialog(true);
+    // Verificar se o produto tem preço variável ("Consulte Valores")
+    if (isPrecoConsulta(produto.preco)) {
+      // Mostrar pop-up de alerta para produtos com preço variável
+      setProdutoConsulta(produto);
+      setShowConsulteValoresDialog(true);
+    } else {
+      // Continuar com o fluxo normal de reserva
+      setProdutoReserva(produto);
+      // Inicializar a lista de produtos selecionados com o produto atual
+      setProdutosSelecionados([{ produto, quantidade: 1 }]);
+      setShowReservaDialog(true);
+    }
   };
   
   // Função para adicionar um produto à lista de produtos selecionados
@@ -1729,6 +1740,50 @@ const PaginaInicial = () => {
           </div>
         </div>
       </footer>
+
+      {/* Diálogo de alerta para produtos com "Consulte Valores" */}
+      <Dialog open={showConsulteValoresDialog} onOpenChange={setShowConsulteValoresDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-center text-xl font-bold text-purple-700">
+              Produto com Preço Variável
+            </DialogTitle>
+          </DialogHeader>
+          <div className="p-4 space-y-4">
+            <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded">
+              <div className="flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-yellow-500 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <p className="text-yellow-700 font-medium">Produto com preço sob consulta</p>
+              </div>
+            </div>
+            
+            <div className="text-center">
+              <h3 className="font-semibold text-lg mb-2">{produtoConsulta?.nome}</h3>
+              <p className="text-gray-600 mb-4">Este produto possui preço variável e não pode ser reservado diretamente pelo site.</p>
+            </div>
+            
+            <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+              <h4 className="font-medium text-purple-700 mb-2">Como proceder:</h4>
+              <ul className="list-disc list-inside space-y-2 text-gray-700">
+                <li>Entre em contato com os líderes da Geração Israel</li>
+                <li>Solicite informações sobre valores e disponibilidade</li>
+                <li>Verifique as condições de pagamento e entrega</li>
+              </ul>
+            </div>
+            
+            <div className="text-center text-sm text-gray-500 mt-2">
+              Para mais informações, procure Danilo Cardoso ou Tatiane Cardoso da Geração Israel.
+            </div>
+          </div>
+          <DialogFooter className="flex justify-center">
+            <Button onClick={() => setShowConsulteValoresDialog(false)}>
+              Entendi
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
