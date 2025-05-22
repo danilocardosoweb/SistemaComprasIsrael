@@ -13,7 +13,7 @@ import {
 import { Calendar, Home, LayoutDashboard, Package, PackageOpen, ShoppingCart, Users } from "lucide-react";
 import { Link } from "react-router-dom";
 // Importando o logo com fundo
-import logoComFundo from "/Image/logo_Com_Fundo.png";
+import logoSimBranco from "/Image/Logo_Sim_Branco.png";
 
 export function AppSidebar() {
   const menuItems = [
@@ -30,7 +30,7 @@ export function AppSidebar() {
       <SidebarHeader className="p-4">
         <Link to="/" className="flex items-center gap-2">
           <img 
-            src={logoComFundo} 
+            src={logoSimBranco} 
             alt="Logo Geração Israel" 
             className="h-12 w-auto" 
           />

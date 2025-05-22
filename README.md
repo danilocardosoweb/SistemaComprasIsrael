@@ -4,7 +4,7 @@
 
 Este sistema foi desenvolvido para a Geração Israel da Igreja Batista Vida Nova Hortolândia, com o objetivo de gerenciar vendas e reservas de produtos para eventos e congressos.
 
-![Logo Geração Israel](/public/Image/logo_Com_Fundo.png)
+![Logo Geração Israel](/public/Image/Logo_Sim_Branco.png)
 
 ## Funcionalidades
 

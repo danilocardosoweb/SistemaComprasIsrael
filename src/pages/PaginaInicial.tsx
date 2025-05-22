@@ -436,8 +436,7 @@ const PaginaInicial = () => {
                 <h1 className="text-4xl md:text-5xl font-bold tracking-tight leading-tight text-white drop-shadow-md">
                   <span className="bg-gradient-to-r from-yellow-300 to-yellow-500 text-transparent bg-clip-text">Sistema de Reservas</span>
                   <span 
-                    className="block mt-2 text-2xl md:text-3xl font-medium text-white md:text-black"
-                    style={{ textShadow: '2px 2px 4px rgba(0, 0, 0, 0.5), 0 0 10px rgba(0, 0, 0, 0.3)' }}
+                    className="block mt-2 text-2xl md:text-3xl font-medium bg-gradient-to-r from-yellow-300 to-yellow-500 text-transparent bg-clip-text"
                   >Congresso de Famílias 2025</span>
                 </h1>
               </div>
