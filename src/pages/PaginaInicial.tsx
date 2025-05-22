@@ -4,15 +4,27 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogPortal,
+  DialogOverlay,
+} from "@/components/ui/dialog"
+import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Search, ShoppingCart, Phone, User, Mail, Heart, ArrowRight, Check, Loader2, Users, X, ZoomIn, Calendar, MapPin, Star, Package, Mail as MailIcon, Globe, Briefcase, Plane, BookOpen, BookmarkCheck, Award, Gift, Coffee, Mic, GraduationCap } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { api, Produto, Venda, StatusPagamento, StatusVenda, ItemVenda, GERACOES, supabase } from "@/lib/supabase";
+import { api, Produto, Venda, StatusPagamento, StatusVenda, ItemVenda, GERACOES, supabase, TextosSite } from "@/lib/supabase";
 import { formatarPreco, precoParaNumero, calcularSubtotal, isPrecoConsulta } from "@/utils/formatarPreco";
 import { useNavigate } from "react-router-dom";
+import "../styles/carrossel.css";
 
 // Interface para os itens da reserva na página inicial
 interface ItemReserva {
@@ -112,6 +124,9 @@ const PaginaInicial = () => {
     banner_local: "Igreja Vida Nova Hortolândia",
     banner_data: "Maio",
     banner_botao_texto: "Ver Produtos",
+    banner_imagem: "/Image/Congresso_2025.png",
+    banner_imagem_2: "",
+    banner_imagem_3: "",
     pagina_inicial_titulo: "Sistema de Reservas",
     pagina_inicial_subtitulo: "Congresso de Famílias 2025",
     pagina_inicial_descricao: "Facilitando o acesso aos produtos exclusivos.",
@@ -151,6 +166,7 @@ const PaginaInicial = () => {
   }, []);
 
   // Carregar produtos ao montar o componente
+  
   // Carregar textos do site
   const carregarTextosSite = async () => {
     setLoadingTextos(true);
@@ -166,9 +182,46 @@ const PaginaInicial = () => {
       
       if (data && data.length > 0) {
         console.log('Textos do site carregados:', data[0]);
-        setTextosSite(data[0]);
+        
+        // Verificar se há imagens salvas no localStorage
+        const imagemSalva = localStorage.getItem('banner_imagem');
+        const imagemSalva2 = localStorage.getItem('banner_imagem_2');
+        const imagemSalva3 = localStorage.getItem('banner_imagem_3');
+        
+        // Criar uma cópia dos textos do site
+        const textos = { ...data[0] };
+        
+        // Verificar e definir a imagem principal
+        if (imagemSalva) {
+          textos.banner_imagem = imagemSalva;
+        } else if (!textos.banner_imagem) {
+          textos.banner_imagem = "/Image/Congresso_2025.png";
+        }
+        
+        // Verificar e definir a segunda imagem
+        if (imagemSalva2) {
+          textos.banner_imagem_2 = imagemSalva2;
+        } else if (!textos.banner_imagem_2) {
+          textos.banner_imagem_2 = "/Image/Congresso_2025.png";
+        }
+        
+        // Verificar e definir a terceira imagem
+        if (imagemSalva3) {
+          textos.banner_imagem_3 = imagemSalva3;
+        } else if (!textos.banner_imagem_3) {
+          textos.banner_imagem_3 = "/Image/Congresso_2025.png";
+        }
+        
+        console.log('Textos do site atualizados com imagens do carrossel:', {
+          banner_imagem: textos.banner_imagem,
+          banner_imagem_2: textos.banner_imagem_2,
+          banner_imagem_3: textos.banner_imagem_3
+        });
+        
+        // Atualizar o estado com os textos do site
+        setTextosSite(textos);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao carregar textos do site:', error);
     } finally {
       setLoadingTextos(false);
@@ -477,7 +530,7 @@ const PaginaInicial = () => {
             <img 
               src="/Image/Logo_Sim_Branco.png" 
               alt="Logo Rede de Casais" 
-              className="h-8 w-auto" 
+              className="h-16 w-auto" 
             />
             <div className="hidden sm:flex flex-col">
               <span className="font-bold text-lg">Rede de Casais</span>
@@ -552,23 +605,54 @@ const PaginaInicial = () => {
             </div>
             
             <div className="md:w-1/2 relative">
-              <div className="relative rounded-lg group-hover:rounded-xl overflow-hidden transform transition-all group-hover:scale-110 duration-500 shadow-md group-hover:shadow-lg border border-white/20 group-hover:border-2 max-w-[120px] md:max-w-[150px] group-hover:max-w-xs mx-auto">
-                <img 
-                  src="/Image/Congresso_2025.png" 
-                  alt="Congresso Famílias 2025" 
-                  className="w-full h-auto object-cover cursor-pointer"
-                  onClick={() => setMostrarQRCode(true)}
-                  title="Clique para ver o QR Code"
-                />
-                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-purple-900/90 to-transparent p-1 group-hover:p-3 text-center">
-                  <Button 
-                    onClick={() => window.scrollTo({top: document.getElementById('produtos')?.offsetTop || 0, behavior: 'smooth'})} 
-                    className="bg-yellow-400 hover:bg-yellow-500 text-purple-900 font-bold text-[10px] group-hover:text-sm py-0 group-hover:py-1 h-6 group-hover:h-8 min-w-0 px-2 group-hover:px-3"
-                    size="sm"
-                  >
-                    <span className="hidden group-hover:inline">{textosSite.banner_botao_texto}</span> <ArrowRight className="group-hover:ml-1 h-3 w-3" />
-                  </Button>
+              {/* Carrossel 3D de imagens */}
+              <div 
+                className="relative rounded-lg group-hover:rounded-xl overflow-visible transform transition-all group-hover:scale-110 duration-500 shadow-md group-hover:shadow-lg max-w-[200px] md:max-w-[250px] group-hover:max-w-xs mx-auto"
+                onClick={() => setMostrarQRCode(true)}
+              >
+                <div className="relative h-full w-full perspective-[1000px] cursor-pointer carousel-container">
+                  {/* Imagem da esquerda */}
+                  <div className="carousel-item carousel-item-left">
+                    <img 
+                      src={textosSite.banner_imagem_3 || localStorage.getItem('banner_imagem_3') || "/Image/Congresso_2025.png"} 
+                      alt="Banner do Congresso 3" 
+                      className="h-32 md:h-40 object-contain rounded shadow-lg"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.src = "/Image/Congresso_2025.png";
+                      }}
+                    />
+                  </div>
+                  
+                  {/* Imagem central (em destaque) */}
+                  <div className="carousel-item carousel-item-center">
+                    <img 
+                      src={textosSite.banner_imagem || localStorage.getItem('banner_imagem') || "/Image/Congresso_2025.png"} 
+                      alt="Banner do Congresso 1" 
+                      className="h-36 md:h-48 object-contain rounded shadow-xl"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.src = "/Image/Congresso_2025.png";
+                      }}
+                    />
+                  </div>
+                  
+                  {/* Imagem da direita */}
+                  <div className="carousel-item carousel-item-right">
+                    <img 
+                      src={textosSite.banner_imagem_2 || localStorage.getItem('banner_imagem_2') || "/Image/Congresso_2025.png"} 
+                      alt="Banner do Congresso 2" 
+                      className="h-32 md:h-40 object-contain rounded shadow-lg"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.src = "/Image/Congresso_2025.png";
+                      }}
+                    />
+                  </div>
                 </div>
+                
+                {/* O CSS do carrossel foi movido para um arquivo separado */}
+                {/* Botão e gradiente removidos para melhorar a visualização do carrossel */}
               </div>
               
               {/* Elementos decorativos - visíveis apenas no hover */}
@@ -827,22 +911,31 @@ const PaginaInicial = () => {
 
       {/* Diálogo para exibir imagem ampliada */}
       <Dialog open={!!imagemAmpliada} onOpenChange={() => setImagemAmpliada(null)}>
-        <DialogContent className="max-w-4xl p-0 bg-transparent border-none">
-          <div className="relative">
-            <img 
-              src={imagemAmpliada || ''} 
-              alt="Imagem ampliada" 
-              className="w-full h-auto rounded-lg shadow-2xl" 
-            />
-            <Button 
-              className="absolute top-2 right-2 bg-black/50 hover:bg-black/70 text-white rounded-full p-2 h-auto" 
-              size="icon"
-              onClick={() => setImagemAmpliada(null)}
-            >
-              <X className="h-5 w-5" />
-            </Button>
-          </div>
-        </DialogContent>
+        <DialogPortal>
+          <DialogOverlay className="bg-black/80" />
+          <DialogPrimitive.Content
+            className="fixed left-[50%] top-[50%] z-50 grid w-full max-w-5xl translate-x-[-50%] translate-y-[-50%] p-0 bg-white/95 backdrop-blur-sm border border-gray-200 dark:border-gray-800 dark:bg-gray-900/95 duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 sm:rounded-lg overflow-hidden"
+          >
+            <div className="relative flex justify-center items-center p-6">
+              <img 
+                src={imagemAmpliada || ''} 
+                alt="Imagem ampliada" 
+                className="max-w-full max-h-[80vh] object-contain rounded-lg" 
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.src = "/Image/produto_sem_imagem.png";
+                }}
+              />
+              <Button 
+                className="absolute top-4 right-4 bg-black/50 hover:bg-black/70 text-white rounded-full p-2 h-auto z-10" 
+                size="icon"
+                onClick={() => setImagemAmpliada(null)}
+              >
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
+          </DialogPrimitive.Content>
+        </DialogPortal>
       </Dialog>
       
       {/* Modal para QR Code */}
@@ -982,7 +1075,7 @@ const PaginaInicial = () => {
                   <div>
                     <span className="text-sm text-gray-600">Total:</span>
                     <span className="ml-2 font-bold text-purple-700">
-                      R$ {produtosSelecionados.reduce((total, item) => total + (item.produto.preco * item.quantidade), 0).toFixed(2)}
+                      R$ {produtosSelecionados.reduce((total, item) => total + (precoParaNumero(item.produto.preco) * item.quantidade), 0).toFixed(2)}
                     </span>
                   </div>
                   <div className="text-xs text-gray-500">

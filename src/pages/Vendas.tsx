@@ -24,7 +24,7 @@ import { Plus, Search, MoreHorizontal, Eye, Loader2, FileDown, Trash2, Edit, Sav
 import { Link, useNavigate } from "react-router-dom";
 import { api, Venda as SupabaseVenda, ItemVenda, StatusPagamento, StatusVenda, Produto, supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
-import { format } from "date-fns";
+import { format, subDays } from "date-fns";
 import * as XLSX from 'xlsx';
 
 // Interface para exibição na interface
@@ -47,6 +47,12 @@ const Vendas = () => {
   const [vendas, setVendas] = useState<VendaExibicao[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("todos");
+  
+  // Estados para filtro de datas
+  const dataAtual = new Date();
+  const data30DiasAtras = subDays(dataAtual, 30);
+  const [dataInicial, setDataInicial] = useState<string>(format(data30DiasAtras, 'yyyy-MM-dd'));
+  const [dataFinal, setDataFinal] = useState<string>(format(dataAtual, 'yyyy-MM-dd'));
   const [selectedVenda, setSelectedVenda] = useState<VendaExibicao | null>(null);
   const [showDetails, setShowDetails] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -98,41 +104,60 @@ const Vendas = () => {
     carregarProdutos();
   }, [toast]);
   
-  // Carregar vendas do Supabase ao montar o componente
-  useEffect(() => {
-    const carregarVendas = async () => {
-      try {
-        setLoading(true);
-        const vendasSupabase = await api.vendas.listar();
-        
-        // Converter para o formato de exibição
-        const vendasFormatadas: VendaExibicao[] = vendasSupabase.map(venda => ({
-          id: venda.id,
-          cliente_id: venda.cliente_id || undefined,
-          cliente: venda.cliente_nome,
-          data: format(new Date(venda.data_venda), 'dd/MM/yyyy'),
-          total: venda.total,
-          status: venda.status_pagamento === 'Pendente' ? 'Pendente' : 'Finalizada',
-          status_pagamento: venda.status_pagamento,
-          produtos: 0, // Será atualizado ao carregar os detalhes
-          forma_pagamento: venda.forma_pagamento,
-          comprovante_url: venda.comprovante_url
-        }));
-        
-        setVendas(vendasFormatadas);
-      } catch (error: any) {
+  // Função para carregar vendas com filtros de data
+  const carregarVendas = async () => {
+    try {
+      setLoading(true);
+      // Converter as datas para o formato correto
+      console.log('Aplicando filtro de datas:', { dataInicial, dataFinal });
+      const vendasSupabase = await api.vendas.listar(dataInicial, dataFinal);
+      
+      // Converter para o formato de exibição
+      const vendasFormatadas: VendaExibicao[] = vendasSupabase.map(venda => ({
+        id: venda.id,
+        cliente_id: venda.cliente_id || undefined,
+        cliente: venda.cliente_nome,
+        data: format(new Date(venda.data_venda), 'dd/MM/yyyy'),
+        total: venda.total,
+        status: venda.status_pagamento === 'Pendente' ? 'Pendente' : 'Finalizada',
+        status_pagamento: venda.status_pagamento,
+        produtos: 0, // Será atualizado ao carregar os detalhes
+        forma_pagamento: venda.forma_pagamento,
+        comprovante_url: venda.comprovante_url
+      }));
+      
+      setVendas(vendasFormatadas);
+      
+      // Exibir mensagem de feedback sobre o filtro aplicado
+      if (vendasFormatadas.length === 0) {
         toast({
-          title: "Erro ao carregar vendas",
-          description: error.message || "Ocorreu um erro ao carregar as vendas.",
-          variant: "destructive",
+          title: "Nenhuma venda encontrada",
+          description: `Não foram encontradas vendas no período de ${format(new Date(dataInicial), 'dd/MM/yyyy')} a ${format(new Date(dataFinal), 'dd/MM/yyyy')}`,
+          variant: "default",
         });
-      } finally {
-        setLoading(false);
+      } else {
+        toast({
+          title: `${vendasFormatadas.length} venda(s) encontrada(s)`,
+          description: `Filtro aplicado: ${format(new Date(dataInicial), 'dd/MM/yyyy')} a ${format(new Date(dataFinal), 'dd/MM/yyyy')}`,
+          variant: "default",
+        });
       }
-    };
-    
+    } catch (error: any) {
+      console.error('Erro ao carregar vendas:', error);
+      toast({
+        title: "Erro ao carregar vendas",
+        description: error.message || "Ocorreu um erro ao carregar as vendas.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  // Carregar vendas quando o componente montar ou quando os filtros de data mudarem
+  useEffect(() => {
     carregarVendas();
-  }, [toast]);
+  }, [dataInicial, dataFinal, toast]);
 
   // Filtrar vendas com base no termo de busca e no filtro de status
   const filteredVendas = useMemo(() => {
@@ -709,28 +734,72 @@ const Vendas = () => {
       <Card>
         <CardHeader className="pb-3">
           <CardTitle>Histórico de Vendas</CardTitle>
-          <div className="flex flex-col sm:flex-row gap-4 mt-2">
-            <div className="relative flex-1">
-              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Buscar por cliente ou código da venda..."
-                className="pl-8 w-full"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-            <div className="w-full sm:w-64">
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Filtrar por Status" />
+          <div className="grid grid-cols-1 gap-4 mb-4">
+            <div className="flex flex-wrap items-center gap-4">
+              <div className="relative w-full sm:w-auto sm:flex-1 min-w-[250px]">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="search"
+                  placeholder="Buscar por cliente ou código da venda..."
+                  className="pl-8 w-full"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+              
+              <Select
+                value={statusFilter}
+                onValueChange={setStatusFilter}
+              >
+                <SelectTrigger className="w-full sm:w-[180px]">
+                  <SelectValue placeholder="Filtrar por status" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="todos">Todos os Status</SelectItem>
                   <SelectItem value="Pendente">Pendente</SelectItem>
                   <SelectItem value="Finalizada">Finalizada</SelectItem>
-                  <SelectItem value="Cancelada">Cancelada</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+            
+            <div className="flex flex-wrap items-end gap-4 border-t pt-4">
+              <div className="flex flex-col">
+                <Label htmlFor="data-inicial" className="mb-2 text-sm font-medium">Data Inicial</Label>
+                <Input
+                  id="data-inicial"
+                  type="date"
+                  value={dataInicial}
+                  onChange={(e) => setDataInicial(e.target.value)}
+                  className="w-[160px]"
+                />
+              </div>
+              
+              <div className="flex flex-col">
+                <Label htmlFor="data-final" className="mb-2 text-sm font-medium">Data Final</Label>
+                <Input
+                  id="data-final"
+                  type="date"
+                  value={dataFinal}
+                  onChange={(e) => setDataFinal(e.target.value)}
+                  className="w-[160px]"
+                />
+              </div>
+              
+              <Button 
+                variant="outline"
+                onClick={carregarVendas}
+                className="h-10 px-4"
+                disabled={loading}
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Filtrando...
+                  </>
+                ) : (
+                  'Filtrar'
+                )}
+              </Button>
             </div>
           </div>
         </CardHeader>

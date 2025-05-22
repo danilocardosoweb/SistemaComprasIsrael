@@ -5,8 +5,14 @@ import { calcularSubtotal } from '@/utils/formatarPreco';
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
-// Criar o cliente do Supabase
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// Criar o cliente do Supabase com configuração para renovação automática de tokens
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: true,
+  },
+});
 
 // Tipos para as tabelas do Supabase
 export type Geracao = string;
@@ -74,6 +80,9 @@ export interface TextosSite {
   banner_local: string;
   banner_data: string;
   banner_botao_texto: string;
+  banner_imagem: string;
+  banner_imagem_2: string;
+  banner_imagem_3: string;
   pagina_inicial_titulo: string;
   pagina_inicial_subtitulo: string;
   pagina_inicial_descricao: string;
@@ -117,6 +126,78 @@ export type ItemVenda = {
 
 // Funções de API para interagir com o Supabase
 export const api = {
+  site: {
+    uploadBannerImagem: async (arquivo: File) => {
+      try {
+        // Usar o bucket banners do Supabase
+        // IMPORTANTE: Este bucket deve ser criado manualmente no painel do Supabase
+        // e configurado com acesso público de leitura
+        const bucketName = 'banners';
+        
+        // Gerar um nome único para o arquivo
+        const extensao = arquivo.name.split('.').pop() || 'png';
+        const timestamp = Date.now();
+        const nomeArquivo = `Congresso_2025_${timestamp}.${extensao}`;
+        
+        console.log(`Tentando fazer upload do arquivo ${nomeArquivo} para o bucket ${bucketName}`);
+        
+        // Fazer upload do arquivo
+        const { data, error } = await supabase
+          .storage
+          .from(bucketName)
+          .upload(nomeArquivo, arquivo, {
+            cacheControl: '3600',
+            upsert: true // Substituir se já existir
+          });
+        
+        if (error) {
+          console.error(`Erro ao fazer upload para o bucket ${bucketName}:`, error);
+          
+          // Se o erro for de permissão ou bucket não encontrado, usar uma abordagem alternativa
+          if (error.message.includes('not found') || error.message.includes('security policy')) {
+            console.log('Usando abordagem alternativa: base64 em vez de storage');
+            
+            // Converter o arquivo para base64 e salvar diretamente no banco
+            return new Promise((resolve) => {
+              const reader = new FileReader();
+              reader.readAsDataURL(arquivo);
+              reader.onload = () => {
+                const base64data = reader.result;
+                console.log('Arquivo convertido para base64 com sucesso');
+                // Retornar a string base64 como URL
+                resolve(base64data as string);
+              };
+              reader.onerror = () => {
+                console.error('Erro ao converter arquivo para base64');
+                resolve(null);
+              };
+            });
+          }
+          
+          throw error;
+        }
+        
+        // Obter a URL pública do arquivo
+        const { data: urlData } = supabase
+          .storage
+          .from(bucketName)
+          .getPublicUrl(nomeArquivo);
+        
+        // Verificar se a URL foi gerada corretamente
+        if (!urlData || !urlData.publicUrl) {
+          console.error('Erro ao gerar URL pública para o arquivo');
+          throw new Error('Não foi possível gerar a URL pública da imagem');
+        }
+        
+        console.log('Upload da imagem do banner bem-sucedido:', urlData.publicUrl);
+        return urlData.publicUrl;
+      } catch (error) {
+        console.error('Erro ao fazer upload da imagem do banner:', error);
+        // Retornar null em caso de erro para não interromper o fluxo principal
+        return null;
+      }
+    },
+  },
   // Textos do site
   siteTextos: {
     listar: async () => {
@@ -222,12 +303,26 @@ export const api = {
       return novaReserva;
     },
     
-    listar: async () => {
-      const { data, error } = await supabase
+    listar: async (dataInicial?: string, dataFinal?: string) => {
+      let query = supabase
         .from('vendas')
         .select('*')
-        .eq('tipo', 'reserva')
-        .order('created_at', { ascending: false });
+        .eq('tipo', 'reserva');
+      
+      // Aplicar filtros de data se fornecidos
+      if (dataInicial) {
+        query = query.gte('data_venda', dataInicial);
+      }
+      
+      if (dataFinal) {
+        // Adicionar 1 dia à data final para incluir todo o último dia
+        const dataFinalObj = new Date(dataFinal);
+        dataFinalObj.setDate(dataFinalObj.getDate() + 1);
+        const dataFinalAjustada = dataFinalObj.toISOString().split('T')[0];
+        query = query.lt('data_venda', dataFinalAjustada);
+      }
+      
+      const { data, error } = await query.order('created_at', { ascending: false });
       
       if (error) throw error;
       return data as Venda[];
@@ -424,14 +519,60 @@ export const api = {
   
   // Vendas
   vendas: {
-    listar: async () => {
-      const { data, error } = await supabase
-        .from('vendas')
-        .select('*')
-        .order('data_venda', { ascending: false });
-      
-      if (error) throw error;
-      return data as Venda[];
+    listar: async (dataInicial?: string, dataFinal?: string) => {
+      try {
+        // Iniciar a consulta básica
+        let query = supabase
+          .from('vendas')
+          .select('*');
+        
+        // Aplicar filtros de data se fornecidos
+        if (dataInicial) {
+          try {
+            // Converter para o formato ISO para garantir compatibilidade
+            const dataInicialObj = new Date(dataInicial + 'T00:00:00');
+            // Formatar a data no formato ISO (YYYY-MM-DD)
+            const dataInicialFormatada = dataInicialObj.toISOString().split('T')[0];
+            // Usar o formato ISO para garantir compatibilidade com o banco
+            query = query.gte('data_venda', dataInicialFormatada);
+            console.log('Data inicial formatada:', dataInicialFormatada);
+          } catch (erro) {
+            console.error('Erro ao processar data inicial:', erro);
+          }
+        }
+        
+        if (dataFinal) {
+          try {
+            // Converter para o formato ISO para garantir compatibilidade
+            const dataFinalObj = new Date(dataFinal + 'T23:59:59');
+            // Adicionar um dia para incluir todo o dia final
+            dataFinalObj.setDate(dataFinalObj.getDate() + 1);
+            // Formatar a data no formato ISO (YYYY-MM-DD)
+            const dataFinalFormatada = dataFinalObj.toISOString().split('T')[0];
+            // Usar o formato ISO para garantir compatibilidade com o banco
+            query = query.lt('data_venda', dataFinalFormatada);
+            console.log('Data final formatada:', dataFinalFormatada);
+          } catch (erro) {
+            console.error('Erro ao processar data final:', erro);
+          }
+        }
+        
+        // Adicionar log para depuração
+        console.log('Filtro de datas aplicado:', { dataInicial, dataFinal });
+        
+        // Executar a consulta
+        const { data, error } = await query.order('data_venda', { ascending: false });
+        
+        if (error) throw error;
+        
+        // Log para verificar os resultados
+        console.log(`Encontradas ${data?.length || 0} vendas com o filtro de datas`);
+        
+        return data as Venda[];
+      } catch (erro) {
+        console.error('Erro ao listar vendas com filtro de datas:', erro);
+        throw erro;
+      }
     },
     
     obter: async (id: string) => {

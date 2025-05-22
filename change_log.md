@@ -1,5 +1,25 @@
 # Log de Alterações - Divino Vendas App
 
+[22/05/2025 16:00] - [lib/supabase] - [Implementação da renovação automática de tokens JWT no Supabase] - [Danilo Cardoso]
+
+[22/05/2025 15:40] - [pages/PaginaInicial] - [Melhoria na visualização de imagens ampliadas com correção do botão duplicado] - [Danilo Cardoso]
+
+[22/05/2025 15:10] - [pages/PaginaInicial] - [Remoção do botão "Ver Produtos" e do gradiente do carrossel para melhorar a visualização das imagens] - [Danilo Cardoso]
+
+[22/05/2025 14:55] - [pages/ConfiguracoesSite, pages/PaginaInicial, styles/carrossel.css] - [Correção e aprimoramento do carrossel 3D com animação automática para o banner do Congresso] - [Danilo Cardoso]
+
+[22/05/2025 14:35] - [pages/ConfiguracoesSite, pages/PaginaInicial] - [Implementação de carrossel 3D com três imagens para o banner do Congresso] - [Danilo Cardoso]
+
+[22/05/2025 14:25] - [pages/ConfiguracoesSite, pages/PaginaInicial] - [Implementação de campo de URL para imagem do banner com fallback para localStorage] - [Danilo Cardoso]
+
+[22/05/2025 14:05] - [pages/ConfiguracoesSite, lib/supabase] - [Implementação de funcionalidade para troca da imagem do banner do Congresso] - [Danilo Cardoso]
+
+[22/05/2025 14:03] - [pages/PaginaInicial] - [Atualização da página inicial para usar a imagem do banner do banco de dados] - [Danilo Cardoso]
+
+[22/05/2025 14:00] - [/] - [Criação do script SQL para adicionar o campo banner_imagem à tabela site_textos] - [Danilo Cardoso]
+
+[22/05/2025 13:50] - [pages/Vendas, lib/supabase] - [Implementação de filtro por datas na página de Vendas com padrão para os últimos 30 dias] - [Danilo Cardoso]
+
 [22/05/2025 13:10] - [pages/PaginaInicial, utils/formatarPreco] - [Implementação de pop-up de alerta para produtos com "Consulte Valores" impedindo reservas diretas] - [Danilo Cardoso]
 
 [22/05/2025 13:05] - [pages/Vendas] - [Adição de filtro de Status ao lado da busca por cliente na página de Vendas] - [Danilo Cardoso]

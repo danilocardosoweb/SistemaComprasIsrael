@@ -1,0 +1,62 @@
+/* Estilos para o carrossel 3D */
+.carousel-container {
+  position: relative;
+  height: 200px;
+  width: 100%;
+  perspective: 1000px;
+}
+
+.carousel-item {
+  position: absolute;
+  transition: all 1s ease-in-out;
+}
+
+.carousel-item-left {
+  top: 50%;
+  left: 0;
+  transform: translateY(-50%) translateX(-25%) scale(0.75);
+  opacity: 0.7;
+  z-index: 10;
+  animation: slideLeft 10s infinite;
+}
+
+.carousel-item-center {
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(1);
+  z-index: 20;
+  animation: pulseCenter 10s infinite;
+}
+
+.carousel-item-right {
+  top: 50%;
+  right: 0;
+  transform: translateY(-50%) translateX(25%) scale(0.75);
+  opacity: 0.7;
+  z-index: 10;
+  animation: slideRight 10s infinite;
+}
+
+@keyframes slideLeft {
+  0%, 100% { transform: translateY(-50%) translateX(-25%) scale(0.75); opacity: 0.7; }
+  33% { transform: translate(-50%, -50%) scale(1); opacity: 1; z-index: 20; }
+  66% { transform: translateY(-50%) translateX(25%) scale(0.75); opacity: 0.7; z-index: 10; }
+}
+
+@keyframes pulseCenter {
+  0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+  33% { transform: translateY(-50%) translateX(25%) scale(0.75); opacity: 0.7; z-index: 10; }
+  66% { transform: translateY(-50%) translateX(-25%) scale(0.75); opacity: 0.7; z-index: 10; }
+}
+
+@keyframes slideRight {
+  0%, 100% { transform: translateY(-50%) translateX(25%) scale(0.75); opacity: 0.7; }
+  33% { transform: translateY(-50%) translateX(-25%) scale(0.75); opacity: 0.7; z-index: 10; }
+  66% { transform: translate(-50%, -50%) scale(1); opacity: 1; z-index: 20; }
+}
+
+.carousel-item:hover {
+  transform: translate(-50%, -50%) scale(1.05) !important;
+  z-index: 30 !important;
+  opacity: 1 !important;
+}
