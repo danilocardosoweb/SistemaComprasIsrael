@@ -458,44 +458,17 @@ export const api = {
     
     uploadComprovante: async (arquivo: File) => {
       try {
-        // Primeiro, verificar se o bucket existe
-        const { data: buckets, error: bucketsError } = await supabase.storage.listBuckets();
-        
-        if (bucketsError) {
-          console.error('Erro ao listar buckets:', bucketsError);
-          // Tentar usar um bucket padrão se não conseguir listar
-        }
-        
-        const bucketExists = buckets?.some(bucket => bucket.name === 'comprovantes');
-        let bucketName = 'comprovantes';
-        
-        // Se o bucket não existir, tentar criá-lo
-        if (!bucketExists) {
-          try {
-            const { error: createError } = await supabase.storage.createBucket(bucketName, {
-              public: true,
-              fileSizeLimit: 10485760, // 10MB
-            });
-            
-            if (createError) {
-              console.error('Erro ao criar bucket comprovantes:', createError);
-              // Tentar usar um bucket alternativo
-              bucketName = 'public';
-              console.log('Tentando usar bucket alternativo:', bucketName);
-            } else {
-              console.log('Bucket "comprovantes" criado com sucesso');
-            }
-          } catch (createError) {
-            console.error('Exceção ao criar bucket:', createError);
-            // Tentar usar um bucket alternativo
-            bucketName = 'public';
-            console.log('Tentando usar bucket alternativo após exceção:', bucketName);
-          }
-        }
+        // Usar diretamente o bucket padrão do Supabase
+        // IMPORTANTE: Este bucket deve ser criado manualmente no painel do Supabase
+        // e configurado com acesso público de leitura
+        const bucketName = 'comprovantes';
         
         // Gerar um nome único para o arquivo
         const extensao = arquivo.name.split('.').pop() || 'jpg';
-        const nomeArquivo = `comprovante_${Date.now()}.${extensao}`;
+        const timestamp = Date.now();
+        const nomeArquivo = `comprovante_${timestamp}.${extensao}`;
+        
+        console.log(`Tentando fazer upload do arquivo ${nomeArquivo} para o bucket ${bucketName}`);
         
         // Fazer upload do arquivo
         const { data, error } = await supabase
@@ -508,6 +481,28 @@ export const api = {
         
         if (error) {
           console.error(`Erro ao fazer upload para o bucket ${bucketName}:`, error);
+          
+          // Se o erro for de permissão ou bucket não encontrado, usar uma abordagem alternativa
+          if (error.message.includes('not found') || error.message.includes('security policy')) {
+            console.log('Usando abordagem alternativa: base64 em vez de storage');
+            
+            // Converter o arquivo para base64 e salvar diretamente no banco
+            return new Promise((resolve) => {
+              const reader = new FileReader();
+              reader.readAsDataURL(arquivo);
+              reader.onload = () => {
+                const base64data = reader.result;
+                console.log('Arquivo convertido para base64 com sucesso');
+                // Retornar a string base64 como URL
+                resolve(base64data as string);
+              };
+              reader.onerror = () => {
+                console.error('Erro ao converter arquivo para base64');
+                resolve(null);
+              };
+            });
+          }
+          
           throw error;
         }
         
@@ -516,6 +511,12 @@ export const api = {
           .storage
           .from(bucketName)
           .getPublicUrl(nomeArquivo);
+        
+        // Verificar se a URL foi gerada corretamente
+        if (!urlData || !urlData.publicUrl) {
+          console.error('Erro ao gerar URL pública para o arquivo');
+          throw new Error('Não foi possível gerar a URL pública do comprovante');
+        }
         
         console.log('Upload de comprovante bem-sucedido:', urlData.publicUrl);
         return urlData.publicUrl;
@@ -527,22 +528,49 @@ export const api = {
     },
 
     atualizar: async (id: string, venda: Partial<Venda>) => {
+      console.log('Atualizando venda com ID:', id, 'Dados:', JSON.stringify(venda, null, 2));
+      
+      // Verificar se a venda existe antes de atualizar
+      const { data: vendaExistente, error: erroConsulta } = await supabase
+        .from('vendas')
+        .select('*')
+        .eq('id', id)
+        .single();
+      
+      if (erroConsulta) {
+        console.error('Erro ao consultar venda existente:', erroConsulta);
+        throw erroConsulta;
+      }
+      
+      console.log('Venda existente:', JSON.stringify(vendaExistente, null, 2));
+      
+      // Preparar os dados para atualização
+      const dadosAtualizacao = {
+        ...venda,
+        // Se o status_pagamento for Feito (pago), a venda é Finalizada
+        // Se o status_pagamento for Cancelado, a venda é Cancelada
+        status: venda.status_pagamento === 'Feito (pago)' 
+          ? 'Finalizada' 
+          : venda.status_pagamento === 'Cancelado'
+          ? 'Cancelada'
+          : vendaExistente.status || 'Pendente'
+      };
+      
+      console.log('Dados de atualização:', JSON.stringify(dadosAtualizacao, null, 2));
+      
+      // Executar a atualização
       const { data, error } = await supabase
         .from('vendas')
-        .update({
-          ...venda,
-          // Se o status_pagamento for Feito (pago), a venda é Finalizada
-          // Se o status_pagamento for Cancelado, a venda é Cancelada
-          status: venda.status_pagamento === 'Feito (pago)' 
-            ? 'Finalizada' 
-            : venda.status_pagamento === 'Cancelado'
-            ? 'Cancelada'
-            : 'Pendente'
-        })
+        .update(dadosAtualizacao)
         .eq('id', id)
         .select();
       
-      if (error) throw error;
+      if (error) {
+        console.error('Erro ao atualizar venda:', error);
+        throw error;
+      }
+      
+      console.log('Venda atualizada com sucesso:', JSON.stringify(data[0], null, 2));
       return data[0] as Venda;
     },
     
@@ -554,6 +582,45 @@ export const api = {
       
       if (error) throw error;
       return data as ItemVenda[];
+    },
+    
+    // Função específica para atualizar o comprovante de uma venda
+    atualizarComprovante: async (id: string, comprovanteUrl: string) => {
+      console.log(`Atualizando comprovante da venda ${id} com URL: ${comprovanteUrl}`);
+      
+      // Atualização direta usando RPC para garantir que o comprovante seja salvo
+      const { data, error } = await supabase
+        .rpc('atualizar_comprovante_venda', { 
+          venda_id: id, 
+          url_comprovante: comprovanteUrl 
+        });
+      
+      // Se o RPC falhar (pode não estar configurado), usar o método padrão
+      if (error) {
+        console.warn('Erro ao usar RPC para atualizar comprovante, tentando método alternativo:', error);
+        
+        // Método alternativo: atualização direta na tabela
+        const { data: updateData, error: updateError } = await supabase
+          .from('vendas')
+          .update({ 
+            comprovante_url: comprovanteUrl,
+            status_pagamento: 'Feito (pago)',
+            status: 'Finalizada'
+          })
+          .eq('id', id)
+          .select();
+        
+        if (updateError) {
+          console.error('Erro ao atualizar comprovante:', updateError);
+          throw updateError;
+        }
+        
+        console.log('Comprovante atualizado com sucesso (método alternativo):', updateData);
+        return updateData[0] as Venda;
+      }
+      
+      console.log('Comprovante atualizado com sucesso (RPC):', data);
+      return data as Venda;
     },
     
     excluir: async (id: string) => {

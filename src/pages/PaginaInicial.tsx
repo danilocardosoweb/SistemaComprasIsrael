@@ -217,18 +217,31 @@ const PaginaInicial = () => {
           
           // Atualizar a venda com a URL do comprovante apenas se o upload foi bem-sucedido
           if (urlComprovante) {
-            console.log('Upload bem-sucedido, atualizando venda com URL:', urlComprovante);
+            console.log('Upload bem-sucedido, atualizando venda com URL:', 
+              typeof urlComprovante === 'string' && urlComprovante.length > 50 ? 
+                urlComprovante.substring(0, 50) + '...' : urlComprovante
+            );
+            
             try {
-              // Garantir que o tipo correto seja passado para a função atualizar
-              await api.vendas.atualizar(reserva.id, {
-                comprovante_url: urlComprovante,
-                // Atualizar também o status de pagamento para 'Feito (pago)' se tiver comprovante
-                status_pagamento: 'Feito (pago)'
-              });
+              // Verificar se é uma URL base64 (abordagem alternativa)
+              const isBase64 = typeof urlComprovante === 'string' && 
+                (urlComprovante.startsWith('data:image/') || urlComprovante.startsWith('data:application/'));
               
-              // Verificar se a atualização foi bem-sucedida
-              const vendaAtualizada = await api.vendas.obter(reserva.id);
-              console.log('Venda atualizada com sucesso com o comprovante:', vendaAtualizada.comprovante_url);
+              if (isBase64) {
+                console.log('Detectado comprovante em formato base64, salvando diretamente no banco');
+              }
+              
+              // Usar a nova função específica para atualizar o comprovante
+              const vendaAtualizada = await api.vendas.atualizarComprovante(reserva.id, urlComprovante);
+              
+              console.log('Venda atualizada com sucesso com o comprovante');
+              if (vendaAtualizada && vendaAtualizada.comprovante_url) {
+                console.log('URL do comprovante salva:', 
+                  typeof vendaAtualizada.comprovante_url === 'string' && vendaAtualizada.comprovante_url.length > 50 ? 
+                    vendaAtualizada.comprovante_url.substring(0, 50) + '...' : 
+                    vendaAtualizada.comprovante_url
+                );
+              }
             } catch (erroAtualizacao) {
               console.error('Erro ao atualizar venda com comprovante:', erroAtualizacao);
               toast({
