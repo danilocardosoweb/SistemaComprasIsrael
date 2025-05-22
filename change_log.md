@@ -1,5 +1,9 @@
 # Log de Alterações - Divino Vendas App
 
+[22/05/2025 17:12] - [src/styles, pages/PaginaInicial] - [Redução do tamanho do carrossel e desativação do QR Code] - [Danilo Cardoso]
+
+[22/05/2025 16:54] - [src/styles] - [Ajustes no carrossel 3D para melhor visualização e centralização] - [Danilo Cardoso]
+
 [22/05/2025 16:00] - [lib/supabase] - [Implementação da renovação automática de tokens JWT no Supabase] - [Danilo Cardoso]
 
 [22/05/2025 15:40] - [pages/PaginaInicial] - [Melhoria na visualização de imagens ampliadas com correção do botão duplicado] - [Danilo Cardoso]

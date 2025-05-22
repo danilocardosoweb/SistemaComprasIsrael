@@ -100,6 +100,25 @@ const PaginaInicial = () => {
   const [categoriaAtiva, setCategoriaAtiva] = useState("todas");
   const [imagemAmpliada, setImagemAmpliada] = useState<string | null>(null);
   const [mostrarQRCode, setMostrarQRCode] = useState(false);
+  const [activeSlide, setActiveSlide] = useState(0);
+  
+  // Funções para controlar o carrossel
+  const nextSlide = () => {
+    setActiveSlide((prev) => (prev === 2 ? 0 : prev + 1));
+  };
+  
+  const prevSlide = () => {
+    setActiveSlide((prev) => (prev === 0 ? 2 : prev - 1));
+  };
+  
+  // Efeito para avançar o slide automaticamente a cada 5 segundos
+  useEffect(() => {
+    const interval = setInterval(() => {
+      nextSlide();
+    }, 5000);
+    
+    return () => clearInterval(interval);
+  }, []);
   const [mostrarMapa, setMostrarMapa] = useState(false);
   const [mostrarManualReserva, setMostrarManualReserva] = useState(false);
   const [mostrarSelecionarProdutos, setMostrarSelecionarProdutos] = useState(false);
@@ -570,8 +589,8 @@ const PaginaInicial = () => {
         <div className="absolute inset-0 bg-purple-900/30 backdrop-blur-sm z-10"></div>
         
         <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-6 py-1 md:py-2 group-hover:py-6 md:group-hover:py-8 transition-all duration-500 relative z-20">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-2 md:gap-3 group-hover:gap-6">
-            <div className="md:w-1/2 space-y-1 md:space-y-2 group-hover:space-y-4 text-center md:text-left transition-all duration-500">
+          <div className="flex flex-col-reverse md:flex-row items-center justify-between gap-2 md:gap-3 group-hover:gap-6">
+            <div className="w-full md:w-1/2 space-y-1 md:space-y-2 group-hover:space-y-4 text-center md:text-left transition-all duration-500">
               <div className="inline-flex items-center px-2 py-0.5 rounded-full bg-yellow-400 text-purple-900 font-bold text-xs mb-1 group-hover:mb-2 animate-pulse">
                 <Star className="mr-0.5 h-3 w-3 group-hover:h-4 group-hover:w-4 group-hover:mr-1" />
                 <span className="hidden group-hover:inline">{textosSite.banner_badge_completo}</span>
@@ -604,50 +623,73 @@ const PaginaInicial = () => {
               </div>
             </div>
             
-            <div className="md:w-1/2 relative">
+            <div className="w-full md:w-1/2 relative flex justify-center items-center">
               {/* Carrossel 3D de imagens */}
               <div 
-                className="relative rounded-lg group-hover:rounded-xl overflow-visible transform transition-all group-hover:scale-110 duration-500 shadow-md group-hover:shadow-lg max-w-[200px] md:max-w-[250px] group-hover:max-w-xs mx-auto"
-                onClick={() => setMostrarQRCode(true)}
+                className="relative w-full max-w-full sm:max-w-[400px] h-[180px] sm:h-[300px] mx-auto flex justify-center items-center overflow-visible"
               >
-                <div className="relative h-full w-full perspective-[1000px] cursor-pointer carousel-container">
-                  {/* Imagem da esquerda */}
-                  <div className="carousel-item carousel-item-left">
-                    <img 
-                      src={textosSite.banner_imagem_3 || localStorage.getItem('banner_imagem_3') || "/Image/Congresso_2025.png"} 
-                      alt="Banner do Congresso 3" 
-                      className="h-32 md:h-40 object-contain rounded shadow-lg"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        target.src = "/Image/Congresso_2025.png";
-                      }}
-                    />
-                  </div>
-                  
-                  {/* Imagem central (em destaque) */}
-                  <div className="carousel-item carousel-item-center">
-                    <img 
-                      src={textosSite.banner_imagem || localStorage.getItem('banner_imagem') || "/Image/Congresso_2025.png"} 
-                      alt="Banner do Congresso 1" 
-                      className="h-36 md:h-48 object-contain rounded shadow-xl"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        target.src = "/Image/Congresso_2025.png";
-                      }}
-                    />
-                  </div>
-                  
-                  {/* Imagem da direita */}
-                  <div className="carousel-item carousel-item-right">
-                    <img 
-                      src={textosSite.banner_imagem_2 || localStorage.getItem('banner_imagem_2') || "/Image/Congresso_2025.png"} 
-                      alt="Banner do Congresso 2" 
-                      className="h-32 md:h-40 object-contain rounded shadow-lg"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        target.src = "/Image/Congresso_2025.png";
-                      }}
-                    />
+                <div className="carousel-container">
+                  <div className="slider">
+                    {/* Slide 1 */}
+                    <div className={`slide ${activeSlide === 0 ? 'active fadeIn' : ''}`}>
+                      <img 
+                        src={textosSite.banner_imagem || localStorage.getItem('banner_imagem') || "/Image/Congresso_2025.png"} 
+                        alt="Banner do Congresso 1" 
+                        className="carousel-image"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.src = "/Image/Congresso_2025.png";
+                        }}
+                      />
+                    </div>
+                    
+                    {/* Slide 2 */}
+                    <div className={`slide ${activeSlide === 1 ? 'active fadeIn' : ''}`}>
+                      <img 
+                        src={textosSite.banner_imagem_2 || localStorage.getItem('banner_imagem_2') || "/Image/Congresso_2025.png"} 
+                        alt="Banner do Congresso 2" 
+                        className="carousel-image"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.src = "/Image/Congresso_2025.png";
+                        }}
+                      />
+                    </div>
+                    
+                    {/* Slide 3 */}
+                    <div className={`slide ${activeSlide === 2 ? 'active fadeIn' : ''}`}>
+                      <img 
+                        src={textosSite.banner_imagem_3 || localStorage.getItem('banner_imagem_3') || "/Image/Congresso_2025.png"} 
+                        alt="Banner do Congresso 3" 
+                        className="carousel-image"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.src = "/Image/Congresso_2025.png";
+                        }}
+                      />
+                    </div>
+                    
+                    {/* Controles de navegação */}
+                    <div className="carousel-controls">
+                      <div className="carousel-control" onClick={prevSlide}>&lt;</div>
+                      <div className="carousel-control" onClick={nextSlide}>&gt;</div>
+                    </div>
+                    
+                    {/* Indicadores de slide */}
+                    <div className="carousel-indicators">
+                      <div 
+                        className={`carousel-indicator ${activeSlide === 0 ? 'active' : ''}`} 
+                        onClick={() => setActiveSlide(0)}
+                      ></div>
+                      <div 
+                        className={`carousel-indicator ${activeSlide === 1 ? 'active' : ''}`} 
+                        onClick={() => setActiveSlide(1)}
+                      ></div>
+                      <div 
+                        className={`carousel-indicator ${activeSlide === 2 ? 'active' : ''}`} 
+                        onClick={() => setActiveSlide(2)}
+                      ></div>
+                    </div>
                   </div>
                 </div>
                 
