@@ -13,7 +13,7 @@ import {
 import { Calendar, Home, LayoutDashboard, Package, PackageOpen, ShoppingCart, Users, Settings } from "lucide-react";
 import { Link } from "react-router-dom";
 // Importando o logo com fundo
-import logoSimBranco from "/Image/Logo_Sim_Branco.png";
+import logoSimBranco from "/Image/Logo_Sim_Sim.png";
 
 export function AppSidebar() {
   const menuItems = [
@@ -33,7 +33,7 @@ export function AppSidebar() {
           <img 
             src={logoSimBranco} 
             alt="Logo Ministério De Casais" 
-            className="h-12 w-auto" 
+            className="h-4 w-auto" 
           />
           <div className="flex flex-col">
             <span className="font-bold text-lg">Ministério De Casais</span>

@@ -68,14 +68,14 @@ const Login = () => {
         <CardHeader className="space-y-1 text-center">
           <div className="flex justify-center mb-2">
             <img 
-              src="/Image/Logo_Sim_Branco_Mini.png" 
-              alt="Logo Geração Israel" 
+              src="/Image/Logo_Sim_Lema.png" 
+              alt="Logo Ministério de Casais" 
               className="h-14 w-auto" 
             />
           </div>
-          <CardTitle className="text-2xl font-bold">Geração Israel</CardTitle>
+          <CardTitle className="text-2xl font-bold">Ministério de Casais</CardTitle>
           <CardDescription>
-            Sistema de gerenciamento de Reservas
+            Sistema de Gerenciamento de Reservas
           </CardDescription>
         </CardHeader>
         <CardContent>

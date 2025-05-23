@@ -148,8 +148,8 @@ const PaginaInicial = () => {
     banner_imagem_3: "",
     pagina_inicial_titulo: "Sistema de Reservas",
     pagina_inicial_subtitulo: "Congresso de Famílias 2025",
-    pagina_inicial_descricao: "Facilitando o acesso aos produtos exclusivos.",
-    footer_descricao: "Facilitando o acesso aos produtos exclusivos.",
+    pagina_inicial_descricao: "Mais que reservas, experiências que conectam propósito e exclusividade.",
+    footer_descricao: "Mais que reservas, experiências que conectam propósito e exclusividade.",
     footer_contato_telefone: "(19) 99165-9221",
     footer_contato_email: "contato@geracaoisrael.com.br",
     footer_contato_endereco: "Av. Thereza Ana Cecon Breda, 2065 - Jardim das Colinas, Hortolândia - SP",
@@ -565,13 +565,7 @@ const PaginaInicial = () => {
             >
               Produtos
             </Button>
-            <Button 
-              variant="ghost" 
-              className="text-white hover:bg-purple-800 hidden md:flex"
-              onClick={() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' })}
-            >
-              Categorias
-            </Button>
+            {/* Botão Categorias removido conforme solicitado */}
             <Button 
               variant="outline" 
               className="bg-white/10 border-white/30 text-white hover:bg-white/20 transition-all duration-300"
@@ -1813,7 +1807,7 @@ const PaginaInicial = () => {
                 </div>
               </div>
               <p className="text-sm text-purple-200 text-center md:text-left mb-4">
-                {textosSite.footer_descricao}
+                Mais que reservas, experiências que conectam propósito e exclusividade.
               </p>
               <div className="flex space-x-3">
                 <a href="https://www.instagram.com/geracaoisrael" target="_blank" rel="noopener noreferrer" className="bg-white/10 p-2 rounded-full hover:bg-white/20 transition-colors">
