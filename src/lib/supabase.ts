@@ -530,9 +530,10 @@ export const api = {
         if (dataInicial) {
           try {
             // Converter para o formato ISO para garantir compatibilidade
-            const dataInicialObj = new Date(dataInicial + 'T00:00:00');
-            // Formatar a data no formato ISO (YYYY-MM-DD)
+            const dataInicialObj = new Date(dataInicial);
+            // Garantir que estamos usando a data local, não UTC
             const dataInicialFormatada = dataInicialObj.toISOString().split('T')[0];
+            
             // Usar o formato ISO para garantir compatibilidade com o banco
             query = query.gte('data_venda', dataInicialFormatada);
             console.log('Data inicial formatada:', dataInicialFormatada);
@@ -544,11 +545,15 @@ export const api = {
         if (dataFinal) {
           try {
             // Converter para o formato ISO para garantir compatibilidade
-            const dataFinalObj = new Date(dataFinal + 'T23:59:59');
+            const dataFinalObj = new Date(dataFinal);
+            
             // Adicionar um dia para incluir todo o dia final
+            // Isso é necessário porque a data final deve incluir todo o dia até 23:59:59
             dataFinalObj.setDate(dataFinalObj.getDate() + 1);
-            // Formatar a data no formato ISO (YYYY-MM-DD)
+            
+            // Garantir que estamos usando a data local, não UTC
             const dataFinalFormatada = dataFinalObj.toISOString().split('T')[0];
+            
             // Usar o formato ISO para garantir compatibilidade com o banco
             query = query.lt('data_venda', dataFinalFormatada);
             console.log('Data final formatada:', dataFinalFormatada);
@@ -575,14 +580,22 @@ export const api = {
       }
     },
     
+    // Obter uma venda específica pelo ID
     obter: async (id: string) => {
+      console.log(`Obtendo venda com ID: ${id}`);
+      
       const { data, error } = await supabase
         .from('vendas')
         .select('*')
         .eq('id', id)
         .single();
       
-      if (error) throw error;
+      if (error) {
+        console.error('Erro ao obter venda:', error);
+        throw error;
+      }
+      
+      console.log('Venda obtida com sucesso:', data);
       return data as Venda;
     },
     

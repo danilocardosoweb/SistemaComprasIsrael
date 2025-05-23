@@ -33,6 +33,7 @@ type VendaExibicao = {
   cliente_id?: string;
   cliente: string;
   data: string;
+  data_original?: string; // Campo adicional para armazenar a data original para ordenação
   total: number;
   status: StatusVenda;
   produtos: number;
@@ -117,7 +118,8 @@ const Vendas = () => {
         id: venda.id,
         cliente_id: venda.cliente_id || undefined,
         cliente: venda.cliente_nome,
-        data: format(new Date(venda.data_venda), 'dd/MM/yyyy'),
+        data: format(new Date(venda.data_venda), 'dd/MM/yyyy HH:mm'),
+        data_original: venda.data_venda, // Guardar a data original para ordenação
         total: venda.total,
         status: venda.status_pagamento === 'Pendente' ? 'Pendente' : 'Finalizada',
         status_pagamento: venda.status_pagamento,
@@ -126,19 +128,35 @@ const Vendas = () => {
         comprovante_url: venda.comprovante_url
       }));
       
-      setVendas(vendasFormatadas);
+      // Ordenar vendas da mais recente para a mais antiga
+      const vendasOrdenadas = [...vendasFormatadas].sort((a, b) => {
+        const dataA = new Date(a.data_original).getTime();
+        const dataB = new Date(b.data_original).getTime();
+        return dataB - dataA; // Ordem decrescente (mais recente primeiro)
+      });
+      
+      setVendas(vendasOrdenadas);
+      
+      // Criar uma função para formatar a data final corretamente
+      const formatarDataFinalExibicao = (dataStr: string) => {
+        // Criar uma cópia da data para não afetar o estado original
+        const dataObj = new Date(dataStr);
+        // Configurar para o final do dia (23:59:59)
+        dataObj.setHours(23, 59, 59);
+        return format(dataObj, 'dd/MM/yyyy');
+      };
       
       // Exibir mensagem de feedback sobre o filtro aplicado
       if (vendasFormatadas.length === 0) {
         toast({
           title: "Nenhuma venda encontrada",
-          description: `Não foram encontradas vendas no período de ${format(new Date(dataInicial), 'dd/MM/yyyy')} a ${format(new Date(dataFinal), 'dd/MM/yyyy')}`,
+          description: `Não foram encontradas vendas no período de ${format(new Date(dataInicial), 'dd/MM/yyyy')} a ${formatarDataFinalExibicao(dataFinal)}`,
           variant: "default",
         });
       } else {
         toast({
           title: `${vendasFormatadas.length} venda(s) encontrada(s)`,
-          description: `Filtro aplicado: ${format(new Date(dataInicial), 'dd/MM/yyyy')} a ${format(new Date(dataFinal), 'dd/MM/yyyy')}`,
+          description: `Filtro aplicado: ${format(new Date(dataInicial), 'dd/MM/yyyy')} a ${formatarDataFinalExibicao(dataFinal)}`,
           variant: "default",
         });
       }
@@ -181,22 +199,36 @@ const Vendas = () => {
     setLoadingDetalhes(true);
     
     try {
-      // Carregar os detalhes completos da venda
-      const vendaCompleta = await api.vendas.obter(venda.id);
-      
       // Carregar os itens da venda
       const itens = await api.vendas.obterItens(venda.id);
-      setItensVenda(itens);
       
-      // Atualizar a venda selecionada com todos os detalhes
+      // Corrigir os subtotais dos itens
+      const itensCorrigidos = itens.map(item => {
+        // Recalcular o subtotal para garantir que esteja correto
+        const subtotalCalculado = calcularSubtotal(item.preco_unitario, item.quantidade);
+        
+        // Se o subtotal calculado for diferente do armazenado, usar o calculado
+        if (subtotalCalculado !== item.subtotal) {
+          console.log(`Corrigindo subtotal do item ${item.produto_nome}:`, {
+            subtotalArmazenado: item.subtotal,
+            subtotalCalculado,
+            precoUnitario: item.preco_unitario,
+            quantidade: item.quantidade
+          });
+          return { ...item, subtotal: subtotalCalculado };
+        }
+        
+        return item;
+      });
+      
+      setItensVenda(itensCorrigidos);
+      
+      // Atualizar a venda selecionada com os detalhes
       setSelectedVenda(prev => {
         if (prev) {
           return { 
             ...prev, 
-            produtos: itens.length,
-            comprovante_url: vendaCompleta.comprovante_url,
-            forma_pagamento: vendaCompleta.forma_pagamento,
-            status_pagamento: vendaCompleta.status_pagamento
+            produtos: itensCorrigidos.length
           };
         }
         return prev;
@@ -220,7 +252,27 @@ const Vendas = () => {
     try {
       // Carregar os itens da venda
       const itens = await api.vendas.obterItens(venda.id);
-      setItensVenda(itens);
+      
+      // Garantir que os subtotais estejam calculados corretamente
+      const itensComSubtotalCorrigido = itens.map(item => {
+        // Recalcular o subtotal para garantir que esteja correto
+        const subtotalCalculado = calcularSubtotal(item.preco_unitario, item.quantidade);
+        
+        // Se o subtotal calculado for diferente do armazenado, usar o calculado
+        if (subtotalCalculado !== item.subtotal) {
+          console.log(`Corrigindo subtotal do item ${item.produto_nome}:`, {
+            subtotalArmazenado: item.subtotal,
+            subtotalCalculado,
+            precoUnitario: item.preco_unitario,
+            quantidade: item.quantidade
+          });
+          return { ...item, subtotal: subtotalCalculado };
+        }
+        
+        return item;
+      });
+      
+      setItensVenda(itensComSubtotalCorrigido);
       setModoEdicao(true);
     } catch (error: any) {
       toast({
@@ -251,12 +303,24 @@ const Vendas = () => {
       setSalvandoEdicao(true);
       
       // Preparar o novo item
+      // Garantir que o preço unitário seja tratado corretamente
+      const precoUnitario = produtoSelecionado.preco;
+      
+      // Calcular o subtotal usando a função utilitária
+      const subtotalCalculado = calcularSubtotal(precoUnitario, quantidade);
+      
+      console.log('Adicionando item com:', { 
+        preco: precoUnitario, 
+        quantidade, 
+        subtotalCalculado 
+      });
+      
       const novoItem = {
         produto_id: produtoSelecionado.id,
         produto_nome: produtoSelecionado.nome,
         quantidade,
-        preco_unitario: produtoSelecionado.preco,
-        subtotal: calcularSubtotal(produtoSelecionado.preco, quantidade)
+        preco_unitario: precoUnitario,
+        subtotal: subtotalCalculado
       };
       
       // Adicionar o item à venda
@@ -617,6 +681,10 @@ const Vendas = () => {
       const dadosItens = [];
       vendasCompletas.forEach(venda => {
         venda.itens?.forEach(item => {
+          // Recalcular o subtotal para garantir que esteja correto
+          const subtotalCalculado = calcularSubtotal(item.preco_unitario, item.quantidade);
+          
+          // Usar o subtotal calculado em vez do armazenado
           dadosItens.push({
             'Código Venda': venda.id,
             'Cliente': venda.cliente,
@@ -624,7 +692,7 @@ const Vendas = () => {
             'Produto': item.produto_nome,
             'Quantidade': item.quantidade,
             'Preço Unitário (R$)': isPrecoNumerico(item.preco_unitario) ? precoParaNumero(item.preco_unitario).toFixed(2) : item.preco_unitario,
-            'Subtotal (R$)': isPrecoNumerico(item.subtotal) ? item.subtotal.toFixed(2) : item.subtotal,
+            'Subtotal (R$)': subtotalCalculado.toFixed(2),
             'Status da Venda': venda.status,
             'Status Pagamento': venda.status_pagamento,
             'Forma Pagamento': venda.forma_pagamento === 'pix' ? 'PIX' : 
@@ -1015,14 +1083,19 @@ const Vendas = () => {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {itensVenda.map((item) => (
-                        <TableRow key={item.id}>
-                          <TableCell>{item.produto_nome}</TableCell>
-                          <TableCell className="text-right">{item.quantidade}</TableCell>
-                          <TableCell className="text-right">{formatarPreco(item.preco_unitario)}</TableCell>
-                          <TableCell className="text-right">{formatarPreco(item.subtotal)}</TableCell>
-                        </TableRow>
-                      ))}
+                      {itensVenda.map((item) => {
+                        // Recalcular o subtotal para garantir que esteja correto
+                        const subtotalCalculado = calcularSubtotal(item.preco_unitario, item.quantidade);
+                        
+                        return (
+                          <TableRow key={item.id}>
+                            <TableCell>{item.produto_nome}</TableCell>
+                            <TableCell className="text-right">{item.quantidade}</TableCell>
+                            <TableCell className="text-right">{formatarPreco(item.preco_unitario)}</TableCell>
+                            <TableCell className="text-right">{formatarPreco(subtotalCalculado)}</TableCell>
+                          </TableRow>
+                        );
+                      })}
                     </TableBody>
                   </Table>
                 </div>
@@ -1130,28 +1203,33 @@ const Vendas = () => {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {itensVenda.map((item) => (
-                        <TableRow key={item.id}>
-                          <TableCell>{item.produto_nome}</TableCell>
-                          <TableCell className="text-right">{item.quantidade}</TableCell>
-                          <TableCell className="text-right">{formatarPreco(item.preco_unitario)}</TableCell>
-                          <TableCell className="text-right">{formatarPreco(item.subtotal)}</TableCell>
-                          <TableCell>
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              onClick={() => handleRemoverItem(item.id)}
-                              disabled={removendoItem === item.id}
-                            >
-                              {removendoItem === item.id ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              ) : (
-                                <MinusCircle className="h-4 w-4 text-destructive" />
-                              )}
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))}
+                      {itensVenda.map((item) => {
+                        // Recalcular o subtotal para garantir que esteja correto
+                        const subtotalCalculado = calcularSubtotal(item.preco_unitario, item.quantidade);
+                        
+                        return (
+                          <TableRow key={item.id}>
+                            <TableCell>{item.produto_nome}</TableCell>
+                            <TableCell className="text-right">{item.quantidade}</TableCell>
+                            <TableCell className="text-right">{formatarPreco(item.preco_unitario)}</TableCell>
+                            <TableCell className="text-right">{formatarPreco(subtotalCalculado)}</TableCell>
+                            <TableCell>
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                onClick={() => handleRemoverItem(item.id)}
+                                disabled={removendoItem === item.id}
+                              >
+                                {removendoItem === item.id ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <MinusCircle className="h-4 w-4 text-destructive" />
+                                )}
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
                     </TableBody>
                   </Table>
                 </div>
