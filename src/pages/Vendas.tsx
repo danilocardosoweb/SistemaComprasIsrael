@@ -716,8 +716,15 @@ const Vendas = () => {
         };
       });
       
-      // Ordenar produtos por estoque (do menor para o maior)
-      dadosInventario.sort((a, b) => Number(a['Estoque Atual']) - Number(b['Estoque Atual']));
+      // Ordenar produtos por categoria e depois por nome
+      dadosInventario.sort((a, b) => {
+        // Primeiro ordenar por categoria
+        if (a['Categoria'] !== b['Categoria']) {
+          return a['Categoria'].localeCompare(b['Categoria']);
+        }
+        // Se a categoria for a mesma, ordenar por nome do produto
+        return a['Produto'].localeCompare(b['Produto']);
+      });
       
       // Preparar dados para o Excel - Planilha de Resumo
       const resumoVendas = {
@@ -730,12 +737,142 @@ const Vendas = () => {
         'Data do Relatório': format(new Date(), 'dd/MM/yyyy')
       };
       
+      // Preparar dados para o Excel - Planilha de Resumo por Produto
+      // Primeiro, vamos agrupar todos os itens vendidos por produto
+      interface ProdutoVendido {
+        id: string;
+        nome: string;
+        categoria: string;
+        quantidade: number;
+        valorTotal: number;
+      }
+      
+      const produtosVendidos: Record<string, ProdutoVendido> = {};
+      vendasCompletas.forEach(venda => {
+        venda.itens?.forEach(item => {
+          const produtoId = item.produto_id;
+          const produtoNome = item.produto_nome;
+          const categoria = todosProdutos.find(p => p.id === produtoId)?.categoria || 'Não categorizado';
+          
+          if (!produtosVendidos[produtoId]) {
+            produtosVendidos[produtoId] = {
+              id: produtoId,
+              nome: produtoNome,
+              categoria: categoria,
+              quantidade: 0,
+              valorTotal: 0
+            };
+          }
+          
+          produtosVendidos[produtoId].quantidade += item.quantidade;
+          produtosVendidos[produtoId].valorTotal += calcularSubtotal(item.preco_unitario, item.quantidade);
+        });
+      });
+      
+      // Converter para array e ordenar por categoria e depois por nome
+      const dadosResumoProdutos = Object.values(produtosVendidos).map((produto: ProdutoVendido) => {
+        return {
+          'Código': produto.id,
+          'Produto': produto.nome,
+          'Categoria': produto.categoria,
+          'Quantidade Vendida': produto.quantidade,
+          'Valor Total (R$)': produto.valorTotal.toFixed(2)
+        };
+      });
+      
+      // Ordenar por categoria e depois por nome do produto
+      dadosResumoProdutos.sort((a, b) => {
+        if (a['Categoria'] !== b['Categoria']) {
+          return a['Categoria'].localeCompare(b['Categoria']);
+        }
+        return a['Produto'].localeCompare(b['Produto']);
+      });
+      
+      // Preparar dados para o Excel - Resumo por Categoria
+      // Agrupar vendas por categoria
+      interface DadosCategoria {
+        quantidade: number;
+        valor: number;
+      }
+      
+      const vendasPorCategoria: Record<string, DadosCategoria> = {};
+      vendasCompletas.forEach(venda => {
+        venda.itens?.forEach(item => {
+          const produtoId = item.produto_id;
+          const categoria = todosProdutos.find(p => p.id === produtoId)?.categoria || 'Não categorizado';
+          
+          if (!vendasPorCategoria[categoria]) {
+            vendasPorCategoria[categoria] = {
+              quantidade: 0,
+              valor: 0
+            };
+          }
+          
+          vendasPorCategoria[categoria].quantidade += item.quantidade;
+          vendasPorCategoria[categoria].valor += calcularSubtotal(item.preco_unitario, item.quantidade);
+        });
+      });
+      
+      // Converter para array
+      const dadosResumoPorCategoria = Object.entries(vendasPorCategoria).map(([categoria, dados]: [string, DadosCategoria]) => {
+        return {
+          'Categoria': categoria,
+          'Quantidade de Itens': dados.quantidade,
+          'Valor Total (R$)': dados.valor.toFixed(2),
+          'Percentual do Total (%)': ((dados.valor / vendasCompletas.reduce((acc, venda) => acc + venda.total, 0)) * 100).toFixed(2)
+        };
+      });
+      
+      // Ordenar por valor total (do maior para o menor)
+      dadosResumoPorCategoria.sort((a, b) => parseFloat(b['Valor Total (R$)']) - parseFloat(a['Valor Total (R$)']));
+      
+      // Preparar dados para o Excel - Inventário por Categoria
+      // Agrupar produtos por categoria
+      // Reutilizando a interface DadosCategoria definida anteriormente
+      const inventarioPorCategoria: Record<string, DadosCategoria> = {};
+      todosProdutos.forEach(produto => {
+        const categoria = produto.categoria || 'Não categorizado';
+        
+        if (!inventarioPorCategoria[categoria]) {
+          inventarioPorCategoria[categoria] = {
+            quantidade: 0,
+            valor: 0
+          };
+        }
+        
+        inventarioPorCategoria[categoria].quantidade += produto.estoque;
+        inventarioPorCategoria[categoria].valor += isPrecoNumerico(produto.preco) ? 
+          calcularSubtotal(produto.preco, produto.estoque) : 0;
+      });
+      
+      // Converter para array
+      const dadosInventarioPorCategoria = Object.entries(inventarioPorCategoria).map(([categoria, dados]: [string, DadosCategoria]) => {
+        return {
+          'Categoria': categoria,
+          'Quantidade em Estoque': dados.quantidade,
+          'Valor em Estoque (R$)': dados.valor.toFixed(2),
+          'Percentual do Estoque (%)': ((dados.valor / todosProdutos.reduce((acc, produto) => 
+            acc + (isPrecoNumerico(produto.preco) ? calcularSubtotal(produto.preco, produto.estoque) : 0), 0)) * 100).toFixed(2)
+        };
+      });
+      
+      // Ordenar por valor em estoque (do maior para o menor)
+      dadosInventarioPorCategoria.sort((a, b) => parseFloat(b['Valor em Estoque (R$)']) - parseFloat(a['Valor em Estoque (R$)']));
+      
       // Criar workbook com múltiplas planilhas
       const wb = XLSX.utils.book_new();
       
-      // Adicionar planilha de Resumo
+      // Adicionar planilha de Resumo Geral
       const wsResumo = XLSX.utils.json_to_sheet([resumoVendas]);
-      XLSX.utils.book_append_sheet(wb, wsResumo, "Resumo");
+      XLSX.utils.book_append_sheet(wb, wsResumo, "Resumo Geral");
+      
+      // Adicionar planilha de Resumo por Categoria
+      const wsResumoPorCategoria = XLSX.utils.json_to_sheet(dadosResumoPorCategoria);
+      XLSX.utils.book_append_sheet(wb, wsResumoPorCategoria, "Resumo por Categoria");
+      
+      // Adicionar planilha de Resumo por Produto
+      const wsResumoPorProduto = XLSX.utils.json_to_sheet(dadosResumoProdutos);
+      XLSX.utils.book_append_sheet(wb, wsResumoPorProduto, "Resumo por Produto");
       
       // Adicionar planilha de Vendas
       const wsVendas = XLSX.utils.json_to_sheet(dadosVendas);
@@ -748,6 +885,10 @@ const Vendas = () => {
       // Adicionar planilha de Inventário de Produtos
       const wsInventario = XLSX.utils.json_to_sheet(dadosInventario);
       XLSX.utils.book_append_sheet(wb, wsInventario, "Inventário de Produtos");
+      
+      // Adicionar planilha de Inventário por Categoria
+      const wsInventarioPorCategoria = XLSX.utils.json_to_sheet(dadosInventarioPorCategoria);
+      XLSX.utils.book_append_sheet(wb, wsInventarioPorCategoria, "Inventário por Categoria");
       
       // Gerar nome do arquivo com data atual
       const dataAtual = format(new Date(), 'dd-MM-yyyy');
