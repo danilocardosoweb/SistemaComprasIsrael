@@ -718,6 +718,9 @@ const Vendas = () => {
           'Total (R$)': venda.total.toFixed(2),
           'Status': venda.status,
           'Status Pagamento': venda.status_pagamento,
+          'Status de Entrega': venda.retira_produto === 'Reserva' ? 'Reserva' : 
+                           venda.retira_produto === 'Entregue' ? 'Entregue' : 
+                           venda.retira_produto || 'Não informado',
           'Forma Pagamento': venda.forma_pagamento === 'pix' ? 'PIX' : 
                            venda.forma_pagamento === 'dinheiro' ? 'Dinheiro' : 
                            venda.forma_pagamento === 'cartao' ? 'Cartão' : 
@@ -745,6 +748,9 @@ const Vendas = () => {
             'Subtotal (R$)': subtotalCalculado.toFixed(2),
             'Status da Venda': venda.status,
             'Status Pagamento': venda.status_pagamento,
+            'Status de Entrega': venda.retira_produto === 'Reserva' ? 'Reserva' : 
+                             venda.retira_produto === 'Entregue' ? 'Entregue' : 
+                             venda.retira_produto || 'Não informado',
             'Forma Pagamento': venda.forma_pagamento === 'pix' ? 'PIX' : 
                              venda.forma_pagamento === 'dinheiro' ? 'Dinheiro' : 
                              venda.forma_pagamento === 'cartao' ? 'Cartão' : 
