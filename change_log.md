@@ -1,5 +1,9 @@
 # Log de Alterações - Divino Vendas App
 
+[24/05/2025 13:45] - [database] - [Execução do script SQL para adicionar o campo retira_produto à tabela vendas] - [Danilo Cardoso]
+
+[24/05/2025 13:40] - [pages/PaginaInicial] - [Modernização da interface de reserva com barra de progresso e melhor UX/UI] - [Danilo Cardoso]
+
 [24/05/2025 13:25] - [pages/Vendas] - [Correção do botão duplicado no diálogo de Detalhes da Venda] - [Danilo Cardoso]
 
 [24/05/2025 12:28] - [pages/Vendas] - [Melhoria na interface de Detalhes da Venda com reorganização, barra de rolagem e melhor UX/UI] - [Danilo Cardoso]
