@@ -1,5 +1,7 @@
 # Log de Alterações - Divino Vendas App
 
+[24/05/2025 17:35] - [pages/NovaVenda] - [Correção do registro de data/hora nas vendas para incluir fuso horário local] - [Danilo Cardoso]
+
 [24/05/2025 15:30] - [pages/Vendas] - [Adição do campo Status de Entrega na exportação para Excel] - [Danilo Cardoso]
 
 [24/05/2025 13:45] - [database] - [Execução do script SQL para adicionar o campo retira_produto à tabela vendas] - [Danilo Cardoso]
