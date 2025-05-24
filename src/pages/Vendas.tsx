@@ -1146,15 +1146,10 @@ const Vendas = () => {
       <Dialog open={showDetails} onOpenChange={setShowDetails}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
           <DialogHeader className="pb-2 border-b">
-            <div className="flex justify-between items-center">
-              <DialogTitle className="flex items-center gap-2 text-xl">
-                <Eye className="h-5 w-5 text-primary" />
-                Detalhes da Venda #{selectedVenda?.id}
-              </DialogTitle>
-              <Button variant="ghost" size="icon" onClick={() => setShowDetails(false)} className="rounded-full hover:bg-muted">
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
+            <DialogTitle className="flex items-center gap-2 text-xl">
+              <Eye className="h-5 w-5 text-primary" />
+              Detalhes da Venda #{selectedVenda?.id}
+            </DialogTitle>
           </DialogHeader>
           
           <div className="space-y-6 overflow-y-auto pr-2 my-2 pb-4" style={{ maxHeight: 'calc(90vh - 180px)' }}>

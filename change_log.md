@@ -1,5 +1,7 @@
 # Log de Alterações - Divino Vendas App
 
+[24/05/2025 13:25] - [pages/Vendas] - [Correção do botão duplicado no diálogo de Detalhes da Venda] - [Danilo Cardoso]
+
 [24/05/2025 12:28] - [pages/Vendas] - [Melhoria na interface de Detalhes da Venda com reorganização, barra de rolagem e melhor UX/UI] - [Danilo Cardoso]
 
 [24/05/2025 12:22] - [pages/Vendas, lib/supabase] - [Adição dos campos "Retira Produto" e "Observações" na tela de detalhes da venda] - [Danilo Cardoso]
