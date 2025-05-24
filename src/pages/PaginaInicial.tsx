@@ -17,8 +17,7 @@ import {
 } from "@/components/ui/dialog"
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Search, ShoppingCart, Phone, User, Mail, Heart, ArrowRight, Check, Loader2, Users, X, ZoomIn, Calendar, MapPin, Star, Package, Mail as MailIcon, Globe, Briefcase, Plane, BookOpen, BookmarkCheck, Award, Gift, Coffee, Mic, GraduationCap } from "lucide-react";
+import { AlertTriangle, ArrowRight, Award, Banknote, BookOpen, BookmarkCheck, Briefcase, Building2, Calendar, Check, ChevronDown, ChevronRight, ChevronUp, Coffee, Copy, CreditCard, Gift, Globe, GraduationCap, Heart, Info, Loader2, Mail, Mail as MailIcon, MapPin, Menu, MessageSquare, Mic, Minus, Package, Phone, Plane, Plus, QrCode, Search, Shield, ShoppingBag, ShoppingCart, Star, Upload, User, Users, X, ZoomIn } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { api, Produto, Venda, StatusPagamento, StatusVenda, ItemVenda, GERACOES, supabase, TextosSite } from "@/lib/supabase";
@@ -1003,48 +1002,109 @@ const PaginaInicial = () => {
         </DialogContent>
       </Dialog>
       
-      {/* Diálogo de Reserva */}
+      {/* Diálogo de Reserva - Layout Moderno */}
       <Dialog open={showReservaDialog} onOpenChange={setShowReservaDialog}>
-        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-hidden flex flex-col p-4 md:p-6">
-          <DialogHeader>
-            <DialogTitle>Reservar Produtos</DialogTitle>
-            <DialogDescription>
-              Selecione os produtos que deseja reservar e preencha seus dados.
-            </DialogDescription>
+        <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-hidden flex flex-col p-0">
+          <DialogHeader className="px-6 pt-6 pb-2">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="bg-purple-100 p-2 rounded-lg">
+                <Package className="h-5 w-5 text-purple-600" />
+              </div>
+              <div>
+                <DialogTitle className="text-xl">Reservar Produtos</DialogTitle>
+                <DialogDescription className="text-sm text-purple-600">
+                  Monte seu carrinho de reservas
+                </DialogDescription>
+              </div>
+            </div>
+            
+            {/* Barra de progresso */}
+            <div className="w-full bg-gray-100 h-1 rounded-full overflow-hidden mt-4">
+              <div 
+                className="bg-purple-600 h-full transition-all duration-300" 
+                style={{ width: produtosSelecionados.length > 0 ? '50%' : '25%' }}
+              />
+            </div>
+            
+            {/* Etapas */}
+            <div className="flex justify-between text-xs mt-1 px-2">
+              <span className={`${produtosSelecionados.length === 0 ? 'text-purple-600 font-medium' : 'text-gray-500'}`}>
+                1. Produtos
+              </span>
+              <span className={`${produtosSelecionados.length > 0 ? 'text-purple-600 font-medium' : 'text-gray-500'}`}>
+                2. Seus dados
+              </span>
+              <span className="text-gray-400">
+                3. Confirmação
+              </span>
+            </div>
           </DialogHeader>
           
           <div className="grid gap-6 py-4 overflow-y-auto pr-2 flex-grow">
-            {/* Lista de produtos selecionados */}
-            <div className="bg-gray-50 p-3 md:p-4 rounded-md border border-gray-200">
-              <div className="flex justify-between items-center mb-3">
-                <h3 className="font-semibold text-purple-800">Produtos selecionados</h3>
+            {/* Lista de produtos selecionados - Layout Moderno */}
+            <div className="bg-white p-4 md:p-6 rounded-xl shadow-sm border border-purple-100">
+              <div className="flex justify-between items-center mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="bg-purple-600 text-white p-2 rounded-lg">
+                    <ShoppingCart className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-purple-900">Carrinho de Reservas</h3>
+                    <p className="text-sm text-gray-500">{produtosSelecionados.length} item(ns) selecionado(s)</p>
+                  </div>
+                </div>
                 <Button 
                   variant="outline" 
                   size="sm"
                   onClick={() => {
-                    // Abrir um diálogo para selecionar mais produtos
                     const categoriasDisponiveis = [...new Set(produtos.map(p => p.categoria))].filter(Boolean);
                     setCategorias(categoriasDisponiveis);
                     setCategoriaAtiva("todas");
                     setSearchTerm("");
                     setMostrarSelecionarProdutos(true);
                   }}
-                  className="text-xs"
+                  className="bg-purple-50 text-purple-600 hover:bg-purple-100 border-purple-200 hover:border-purple-300"
                 >
-                  <Package className="mr-1 h-3 w-3" /> Adicionar mais produtos
+                  <Plus className="mr-1 h-4 w-4" /> Adicionar produtos
                 </Button>
               </div>
               
+              {/* Dica visual para múltiplos produtos */}
+              {produtosSelecionados.length === 0 && (
+                <div className="bg-purple-50 p-4 rounded-lg border border-purple-100 mb-4">
+                  <div className="flex items-start gap-3">
+                    <div className="bg-purple-100 p-2 rounded-full">
+                      <Info className="h-5 w-5 text-purple-600" />
+                    </div>
+                    <div>
+                      <h4 className="font-medium text-purple-900 mb-1">Dica: Você pode reservar vários produtos!</h4>
+                      <p className="text-sm text-purple-700">
+                        Clique em "Adicionar produtos" para selecionar mais itens para sua reserva.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
               {produtosSelecionados.length === 0 ? (
-                <div className="text-center py-4 text-gray-500">
-                  <Package className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                  <p>Nenhum produto selecionado</p>
+                <div className="text-center py-8">
+                  <div className="relative inline-block">
+                    <div className="absolute -top-2 -right-2 w-8 h-8 bg-purple-100 rounded-full animate-pulse"></div>
+                    <div className="relative bg-purple-50 p-4 rounded-full mb-3 inline-flex">
+                      <Package className="h-8 w-8 text-purple-400" />
+                    </div>
+                  </div>
+                  <p className="text-purple-600 font-medium">Seu carrinho está vazio</p>
+                  <p className="text-sm text-gray-500 mt-1">Clique em "Adicionar produtos" para começar</p>
                 </div>
               ) : (
-                <div className="space-y-2 max-h-40 overflow-y-auto pr-2">
+                <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-purple-200 scrollbar-track-purple-50">
                   {produtosSelecionados.map((item) => (
-                    <div key={item.produto.id} className="flex items-center gap-2 bg-white p-2 rounded-md border border-gray-200">
-                      <div className="w-10 h-10 md:w-12 md:h-12 bg-white rounded-md overflow-hidden border border-gray-200 flex-shrink-0">
+                    <div 
+                      key={item.produto.id} 
+                      className="flex items-center gap-4 bg-white p-3 rounded-xl border border-purple-100 hover:border-purple-200 transition-all duration-200 shadow-sm hover:shadow-md"
+                    >
+                      <div className="w-16 h-16 bg-purple-50 rounded-lg overflow-hidden border border-purple-100 flex-shrink-0 p-1">
                         <img 
                           src={extrairUrlImagem(item.produto.descricao) || "/placeholder-image.jpg"} 
                           alt={item.produto.nome} 
@@ -1054,52 +1114,50 @@ const PaginaInicial = () => {
                           }}
                         />
                       </div>
-                      <div className="flex-1 min-w-0 pr-2">
-                        <h4 className="font-medium text-xs md:text-sm mb-0.5" title={item.produto.nome}>
-                          {item.produto.nome.length > 25 ? 
-                            <>
-                              <span className="inline-block w-full whitespace-normal break-words">{item.produto.nome}</span>
-                            </> : 
-                            item.produto.nome
-                          }
-                        </h4>
-                        <p className="text-purple-600 font-bold text-xs md:text-sm">
-                          {formatarPreco(item.produto.preco)}
-                        </p>
-                      </div>
-                      <div className="flex items-center space-x-0.5 md:space-x-1">
-                        <Button 
-                          variant="outline" 
-                          size="icon" 
-                          className="h-5 w-5 md:h-6 md:w-6 rounded-full"
-                          onClick={() => alterarQuantidadeProduto(item.produto.id, item.quantidade - 1)}
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/></svg>
-                          <span className="sr-only">Diminuir</span>
-                        </Button>
-                        <span className="w-5 md:w-6 text-center text-xs md:text-sm">{item.quantidade}</span>
-                        <Button 
-                          variant="outline" 
-                          size="icon" 
-                          className="h-5 w-5 md:h-6 md:w-6 rounded-full"
-                          onClick={() => {
-                            // Converter a quantidade para número antes de somar
-                            const quantidadeAtual = Number(item.quantidade);
-                            alterarQuantidadeProduto(item.produto.id, quantidadeAtual + 1);
-                          }}
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
-                          <span className="sr-only">Aumentar</span>
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="h-5 w-5 md:h-6 md:w-6 text-red-500 hover:text-red-700 hover:bg-red-50"
-                          onClick={() => removerProduto(item.produto.id)}
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
-                          <span className="sr-only">Remover</span>
-                        </Button>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex justify-between items-start mb-1 gap-2">
+                          <h4 className="font-medium text-sm text-gray-900" title={item.produto.nome}>
+                            {item.produto.nome.length > 40 ? 
+                              `${item.produto.nome.substring(0, 40)}...` : 
+                              item.produto.nome
+                            }
+                          </h4>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-6 w-6 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full -mt-1 -mr-1"
+                            onClick={() => removerProduto(item.produto.id)}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <p className="text-purple-600 font-bold">
+                            {formatarPreco(item.produto.preco)}
+                          </p>
+                          <div className="flex items-center bg-purple-50 rounded-lg border border-purple-100 p-1">
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-6 w-6 text-purple-600 hover:text-purple-700 hover:bg-purple-100 rounded-md"
+                              onClick={() => alterarQuantidadeProduto(item.produto.id, item.quantidade - 1)}
+                            >
+                              <Minus className="h-3 w-3" />
+                            </Button>
+                            <span className="w-8 text-center text-sm font-medium text-purple-900">{item.quantidade}</span>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-6 w-6 text-purple-600 hover:text-purple-700 hover:bg-purple-100 rounded-md"
+                              onClick={() => {
+                                const quantidadeAtual = Number(item.quantidade);
+                                alterarQuantidadeProduto(item.produto.id, quantidadeAtual + 1);
+                              }}
+                            >
+                              <Plus className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -1107,120 +1165,177 @@ const PaginaInicial = () => {
               )}
               
               {produtosSelecionados.length > 0 && (
-                <div className="mt-2 pt-2 md:mt-3 md:pt-3 border-t border-gray-200 flex justify-between items-center">
-                  <div>
-                    <span className="text-sm text-gray-600">Total:</span>
-                    <span className="ml-2 font-bold text-purple-700">
-                      R$ {produtosSelecionados.reduce((total, item) => total + (precoParaNumero(item.produto.preco) * item.quantidade), 0).toFixed(2)}
+                <div className="mt-4 pt-4 border-t border-purple-100">
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-sm text-gray-500">Subtotal</span>
+                    <span className="text-sm font-medium text-gray-900">
+                      {formatarPreco(produtosSelecionados.reduce((total, item) => total + (precoParaNumero(item.produto.preco) * item.quantidade), 0))}
                     </span>
                   </div>
-                  <div className="text-xs text-gray-500">
-                    {produtosSelecionados.reduce((total, item) => total + item.quantidade, 0)} item(ns)
+                  <div className="flex justify-between items-center">
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg font-bold text-gray-900">Total</span>
+                      <div className="bg-purple-100 text-purple-600 text-xs font-medium px-2 py-0.5 rounded-full">
+                        {produtosSelecionados.reduce((total, item) => total + item.quantidade, 0)} item(ns)
+                      </div>
+                    </div>
+                    <span className="text-lg font-bold text-purple-600">
+                      {formatarPreco(produtosSelecionados.reduce((total, item) => total + (precoParaNumero(item.produto.preco) * item.quantidade), 0))}
+                    </span>
                   </div>
                 </div>
               )}
             </div>
             
-            {/* Formulário de Dados */}
-            <div className="space-y-3 md:space-y-4">
-              <h3 className="font-medium text-gray-700">Seus dados</h3>
+            {/* Formulário de Dados - Layout Moderno */}
+            <div className="space-y-4 md:space-y-5 bg-white p-4 md:p-6 rounded-xl shadow-sm border border-purple-100">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="bg-purple-600 text-white p-2 rounded-lg">
+                  <User className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-purple-900">Seus dados</h3>
+                  <p className="text-sm text-gray-500">Preencha seus dados para finalizar a reserva</p>
+                </div>
+              </div>
               
-              <div className="grid gap-2 md:gap-3">
-                <div className="grid gap-1.5">
-                  <Label htmlFor="nome" className="flex items-center text-sm font-medium">
-                    <User className="mr-2 h-4 w-4 text-purple-600" />
-                    Nome completo *
+              <div className="grid gap-4 md:gap-5">
+                {/* Nome completo */}
+                <div className="grid gap-2">
+                  <Label htmlFor="nome" className="flex items-center text-sm font-medium text-gray-700">
+                    Nome completo <span className="text-red-500 ml-0.5">*</span>
                   </Label>
-                  <Input
-                    id="nome"
-                    name="nome"
-                    value={dadosReserva.nome}
-                    onChange={handleInputChange}
-                    placeholder="Seu nome completo"
-                    className="border-gray-300"
-                  />
+                  <div className="relative">
+                    <Input
+                      id="nome"
+                      name="nome"
+                      value={dadosReserva.nome}
+                      onChange={handleInputChange}
+                      placeholder="Digite seu nome completo"
+                      className="pl-10 border-gray-200 hover:border-purple-300 focus:border-purple-500 transition-colors duration-200"
+                    />
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  </div>
                 </div>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-3">
-                  <div className="grid gap-1.5">
-                    <Label htmlFor="telefone" className="flex items-center text-sm font-medium">
-                      <Phone className="mr-2 h-4 w-4 text-purple-600" />
-                      Telefone *
+                {/* Telefone e Geração */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5">
+                  <div className="grid gap-2">
+                    <Label htmlFor="telefone" className="flex items-center text-sm font-medium text-gray-700">
+                      Telefone <span className="text-red-500 ml-0.5">*</span>
                     </Label>
-                    <Input
-                      id="telefone"
-                      name="telefone"
-                      value={dadosReserva.telefone}
-                      onChange={handleInputChange}
-                      placeholder="(00) 00000-0000"
-                      className="border-gray-300"
-                    />
+                    <div className="relative">
+                      <Input
+                        id="telefone"
+                        name="telefone"
+                        value={dadosReserva.telefone}
+                        onChange={handleInputChange}
+                        placeholder="(00) 00000-0000"
+                        className="pl-10 border-gray-200 hover:border-purple-300 focus:border-purple-500 transition-colors duration-200"
+                      />
+                      <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    </div>
                   </div>
                   
-                  <div className="grid gap-1.5">
-                    <Label htmlFor="geracao" className="flex items-center text-sm font-medium">
-                      <Users className="mr-2 h-4 w-4 text-purple-600" />
-                      Geração *
+                  <div className="grid gap-2">
+                    <Label htmlFor="geracao" className="flex items-center text-sm font-medium text-gray-700">
+                      Geração <span className="text-red-500 ml-0.5">*</span>
                     </Label>
+                    <div className="relative">
+                      <Select 
+                        value={dadosReserva.geracao} 
+                        onValueChange={(value) => setDadosReserva({...dadosReserva, geracao: value})}
+                      >
+                        <SelectTrigger 
+                          id="geracao" 
+                          className="pl-10 border-gray-200 hover:border-purple-300 focus:border-purple-500 transition-colors duration-200"
+                        >
+                          <SelectValue placeholder="Selecione sua geração" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="nenhuma">Nenhuma</SelectItem>
+                          {GERACOES.map((geracao) => (
+                            <SelectItem key={geracao} value={geracao}>{geracao}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Users className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Forma de Pagamento */}
+                <div className="grid gap-2">
+                  <Label htmlFor="formaPagamento" className="flex items-center text-sm font-medium text-gray-700">
+                    Forma de Pagamento <span className="text-red-500 ml-0.5">*</span>
+                  </Label>
+                  <div className="relative">
                     <Select 
-                      value={dadosReserva.geracao} 
-                      onValueChange={(value) => setDadosReserva({...dadosReserva, geracao: value})}
+                      value={dadosReserva.formaPagamento} 
+                      onValueChange={(value) => {
+                        setDadosReserva(prev => ({ ...prev, formaPagamento: value }));
+                        if (value === "pix") {
+                          setMostrarQRCodePix(true);
+                        } else {
+                          setMostrarQRCodePix(false);
+                        }
+                      }}
                     >
-                      <SelectTrigger id="geracao" className="border-gray-300">
-                        <SelectValue placeholder="Selecione sua geração" />
+                      <SelectTrigger 
+                        id="formaPagamento" 
+                        className="pl-10 border-gray-200 hover:border-purple-300 focus:border-purple-500 transition-colors duration-200"
+                      >
+                        <SelectValue placeholder="Selecione a forma de pagamento" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="nenhuma">Nenhuma</SelectItem>
-                        {GERACOES.map((geracao) => (
-                          <SelectItem key={geracao} value={geracao}>{geracao}</SelectItem>
-                        ))}
+                        <SelectItem value="pix" className="flex items-center gap-2">
+                          <CreditCard className="h-4 w-4" /> PIX
+                        </SelectItem>
+                        <SelectItem value="dinheiro" className="flex items-center gap-2">
+                          <Banknote className="h-4 w-4" /> Dinheiro
+                        </SelectItem>
+                        <SelectItem value="cartao" className="flex items-center gap-2">
+                          <CreditCard className="h-4 w-4" /> Cartão de Crédito/Débito
+                        </SelectItem>
                       </SelectContent>
                     </Select>
+                    <ShoppingCart className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                   </div>
-                </div>
-                
-                <div className="grid gap-1.5">
-                  <Label htmlFor="formaPagamento" className="flex items-center text-sm font-medium">
-                    <ShoppingCart className="mr-2 h-4 w-4 text-purple-600" />
-                    Forma de Pagamento *
-                  </Label>
-                  <Select 
-                    value={dadosReserva.formaPagamento} 
-                    onValueChange={(value) => {
-                      setDadosReserva(prev => ({ ...prev, formaPagamento: value }));
-                      if (value === "pix") {
-                        setMostrarQRCodePix(true);
-                      } else {
-                        setMostrarQRCodePix(false);
-                      }
-                    }}
-                  >
-                    <SelectTrigger id="formaPagamento" className="border-gray-300">
-                      <SelectValue placeholder="Selecione a forma de pagamento" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="pix">PIX</SelectItem>
-                      <SelectItem value="dinheiro">Dinheiro</SelectItem>
-                      <SelectItem value="cartao">Cartão de Crédito/Débito</SelectItem>
-                    </SelectContent>
-                  </Select>
                   
                   {mostrarQRCodePix && (
-                    <div className="mt-2 p-3 bg-purple-50 rounded-md border border-purple-200">
+                    <div className="mt-4 p-6 bg-gradient-to-br from-purple-50 to-white rounded-xl border border-purple-100 shadow-sm">
                       <div className="flex flex-col items-center">
-                        <h3 className="text-sm font-semibold text-purple-800 mb-1">QR Code para pagamento PIX</h3>
-                        <div className="bg-white p-2 rounded-md shadow-sm mb-2">
+                        <div className="flex items-center gap-2 mb-4">
+                          <div className="bg-purple-100 p-2 rounded-lg">
+                            <QrCode className="h-5 w-5 text-purple-600" />
+                          </div>
+                          <div>
+                            <h3 className="font-semibold text-purple-900">QR Code PIX</h3>
+                            <p className="text-sm text-purple-600">Escaneie para pagar</p>
+                          </div>
+                        </div>
+                        
+                        <div className="bg-white p-4 rounded-xl shadow-md mb-4 border-2 border-purple-100 hover:border-purple-200 transition-all duration-200 group cursor-pointer relative"
+                          onClick={() => window.open("/Image/QR Code_VidaNova.jpg", "_blank")}>
+                          <div className="absolute inset-0 bg-purple-600 bg-opacity-0 group-hover:bg-opacity-10 transition-all duration-200 rounded-xl flex items-center justify-center">
+                            <div className="bg-white p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-all duration-200 shadow-lg">
+                              <ZoomIn className="h-5 w-5 text-purple-600" />
+                            </div>
+                          </div>
                           <img 
                             src="/Image/QR Code_VidaNova.jpg" 
                             alt="QR Code PIX" 
                             className="w-48 h-48 object-contain"
-                            onClick={() => window.open("/Image/QR Code_VidaNova.jpg", "_blank")}
                           />
                         </div>
-                        <div className="w-full">
-                          <p className="text-xs text-gray-600 mb-1">CNPJ (clique para copiar):</p>
+                        
+                        <div className="w-full space-y-2">
+                          <Label className="text-sm text-gray-600 flex items-center gap-1.5">
+                            <Building2 className="h-4 w-4 text-purple-500" />
+                            CNPJ
+                          </Label>
                           <div 
-                            className="flex items-center justify-between bg-white p-2 rounded border border-gray-300 cursor-pointer"
+                            className="flex items-center justify-between bg-white p-3 rounded-lg border border-purple-100 hover:border-purple-300 transition-all duration-200 cursor-pointer group"
                             onClick={() => {
                               navigator.clipboard.writeText(cnpjPix);
                               toast({
@@ -1229,8 +1344,11 @@ const PaginaInicial = () => {
                               });
                             }}
                           >
-                            <span className="text-sm font-medium">{cnpjPix}</span>
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-purple-600"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                            <span className="text-sm font-medium text-gray-900">{cnpjPix}</span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-purple-600 opacity-0 group-hover:opacity-100 transition-all duration-200">Copiar</span>
+                              <Copy className="h-4 w-4 text-purple-600" />
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -1238,58 +1356,73 @@ const PaginaInicial = () => {
                   )}
                 </div>
                 
-                <div className="grid gap-1.5">
-                  <Label htmlFor="comprovantePagamento" className="flex items-center text-sm font-medium">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2 text-purple-600"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
-                    Comprovante de Pagamento {dadosReserva.formaPagamento === 'pix' && '*'}
+                {/* Comprovante de Pagamento */}
+                <div className="grid gap-2">
+                  <Label htmlFor="comprovantePagamento" className="flex items-center text-sm font-medium text-gray-700">
+                    Comprovante de Pagamento {dadosReserva.formaPagamento === 'pix' && <span className="text-red-500 ml-0.5">*</span>}
                   </Label>
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-2">
-                    <div className="flex-1 mb-1 sm:mb-0">
-                      <Input
-                        id="comprovantePagamento"
-                        name="comprovantePagamento"
-                        type="file"
-                        accept="image/*,.pdf"
-                        onChange={handleFileChange}
-                        className="border-gray-300 text-xs md:text-sm w-full"
-                      />
-                    </div>
-                    {dadosReserva.comprovantePagamento && (
-                      <div className="text-xs text-green-600 flex items-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-1"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                        Arquivo selecionado
+                  <div className="relative">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                      <div className="flex-1 relative">
+                        <Input
+                          id="comprovantePagamento"
+                          name="comprovantePagamento"
+                          type="file"
+                          accept="image/*,.pdf"
+                          onChange={handleFileChange}
+                          className="pl-10 border-gray-200 hover:border-purple-300 focus:border-purple-500 transition-colors duration-200 text-sm w-full cursor-pointer"
+                        />
+                        <Upload className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                       </div>
-                    )}
+                      {dadosReserva.comprovantePagamento && (
+                        <div className="text-sm text-green-600 flex items-center bg-green-50 px-3 py-1 rounded-full">
+                          <Check className="mr-1.5 h-4 w-4" />
+                          Arquivo selecionado
+                        </div>
+                      )}
+                    </div>
+                    <p className="mt-1.5 text-xs text-gray-500 flex items-center gap-1">
+                      <Info className="h-3 w-3" />
+                      Aceita imagens (JPG, PNG) ou PDF. Máx: 5MB.
+                    </p>
                   </div>
-                  <p className="text-xs text-gray-500">Aceita imagens (JPG, PNG) ou PDF. Máx: 5MB.</p>
                 </div>
                 
-                <div className="grid gap-1.5">
-                  <Label htmlFor="email" className="flex items-center text-sm font-medium">
-                    <Mail className="mr-2 h-4 w-4 text-purple-600" />
-                    E-mail (opcional)
+                {/* E-mail */}
+                <div className="grid gap-2">
+                  <Label htmlFor="email" className="flex items-center text-sm font-medium text-gray-700">
+                    E-mail <span className="text-gray-400 text-xs ml-1">(opcional)</span>
                   </Label>
-                  <Input
-                    id="email"
-                    name="email"
-                    value={dadosReserva.email}
-                    onChange={handleInputChange}
-                    placeholder="seu@email.com"
-                    className="border-gray-300"
-                  />
+                  <div className="relative">
+                    <Input
+                      id="email"
+                      name="email"
+                      value={dadosReserva.email}
+                      onChange={handleInputChange}
+                      placeholder="seu@email.com"
+                      className="pl-10 border-gray-200 hover:border-purple-300 focus:border-purple-500 transition-colors duration-200"
+                    />
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  </div>
                 </div>
                 
-                <div className="grid gap-1.5">
-                  <Label htmlFor="observacoes" className="text-sm font-medium">Observações (opcional)</Label>
-                  <Textarea
-                    id="observacoes"
-                    name="observacoes"
-                    value={dadosReserva.observacoes}
-                    onChange={handleInputChange}
-                    placeholder="Alguma observação sobre sua reserva?"
-                    rows={2}
-                    className="border-gray-300"
-                  />
+                {/* Observações */}
+                <div className="grid gap-2">
+                  <Label htmlFor="observacoes" className="flex items-center text-sm font-medium text-gray-700">
+                    Observações <span className="text-gray-400 text-xs ml-1">(opcional)</span>
+                  </Label>
+                  <div className="relative">
+                    <Textarea
+                      id="observacoes"
+                      name="observacoes"
+                      value={dadosReserva.observacoes}
+                      onChange={handleInputChange}
+                      placeholder="Alguma observação sobre sua reserva?"
+                      rows={3}
+                      className="pl-10 border-gray-200 hover:border-purple-300 focus:border-purple-500 transition-colors duration-200 resize-none"
+                    />
+                    <MessageSquare className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                  </div>
                 </div>
               </div>
             </div>
@@ -1315,26 +1448,43 @@ const PaginaInicial = () => {
             </div>
           </div>
           
-          <div className="flex flex-col sm:flex-row justify-end gap-2 sm:gap-3 mt-3 sm:mt-4 bg-white pt-2 border-t flex-shrink-0">
-            <Button variant="outline" onClick={() => setShowReservaDialog(false)} className="text-sm py-1 h-9 sm:h-10">Cancelar</Button>
-            <Button 
-              onClick={handleEnviarReserva} 
-              className="bg-purple-600 hover:bg-purple-700 text-white text-sm py-1 h-9 sm:h-10"
-              disabled={enviandoReserva}
-            >
-              {enviandoReserva ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Enviando...
-                </>
-              ) : (
-                <>
-                  <Check className="mr-2 h-4 w-4" />
-                  Confirmar Reserva
-                </>
-              )}
-            </Button>
-          </div>
+          <DialogFooter className="px-8 py-6 bg-gray-50/80 backdrop-blur-sm border-t border-purple-100 mt-6">
+            <div className="flex flex-col-reverse sm:flex-row justify-between sm:justify-end gap-4 w-full max-w-[95%] mx-auto">
+              <Button 
+                variant="outline" 
+                onClick={() => setShowReservaDialog(false)} 
+                className="w-full sm:w-auto border-gray-300 hover:bg-gray-100 transition-colors duration-200 px-6 py-2.5"
+              >
+                <X className="mr-2 h-4 w-4" />
+                Cancelar
+              </Button>
+              <Button 
+                onClick={handleEnviarReserva} 
+                className="w-full sm:w-auto bg-purple-600 text-white hover:bg-purple-700 shadow-sm hover:shadow-md transition-all duration-200 disabled:shadow-none px-6 py-2.5"
+                disabled={enviandoReserva}
+              >
+                {enviandoReserva ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Enviando...
+                  </>
+                ) : (
+                  <>
+                    <Check className="mr-2 h-4 w-4" />
+                    Confirmar Reserva
+                  </>
+                )}
+              </Button>
+            </div>
+            
+            {/* Dica de segurança */}
+            <div className="mt-4 flex items-start gap-2 text-xs text-gray-500 bg-gray-100/50 p-2 rounded-lg">
+              <Shield className="h-4 w-4 text-purple-500 flex-shrink-0 mt-0.5" />
+              <p>
+                Seus dados estão seguros e serão usados apenas para processar sua reserva.
+              </p>
+            </div>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
@@ -1490,28 +1640,31 @@ const PaginaInicial = () => {
       
       {/* Diálogo de confirmação da reserva */}
       <Dialog open={mostrarConfirmacao} onOpenChange={setMostrarConfirmacao}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Confirmar Reserva</DialogTitle>
+        <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden">
+          <DialogHeader className="px-6 pt-6 pb-4 border-b border-gray-100">
+            <DialogTitle className="text-xl text-center font-bold text-purple-900">Confirmar Reserva</DialogTitle>
           </DialogHeader>
           
-          <div className="py-4 space-y-4">
+          <div className="px-6 py-5 space-y-5 overflow-y-auto max-h-[60vh]">
             {/* Resumo da reserva */}
-            <div className="bg-purple-50 border border-purple-200 rounded-md p-3">
-              <h3 className="font-medium text-purple-800 mb-2">Resumo da reserva:</h3>
-              <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
+            <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+              <h3 className="font-medium text-purple-800 mb-3 flex items-center">
+                <ShoppingCart className="mr-2 h-4 w-4" />
+                Resumo da reserva:
+              </h3>
+              <div className="space-y-3 max-h-[200px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-purple-200 scrollbar-track-purple-50">
                 {produtosSelecionados.map((item) => (
-                  <div key={item.produto.id} className="flex justify-between text-sm">
-                    <span>{item.quantidade}x {item.produto.nome}</span>
-                    <span className="font-medium">
+                  <div key={item.produto.id} className="flex justify-between items-center text-sm bg-white p-2 rounded-md border border-purple-100">
+                    <span className="font-medium">{item.quantidade}x {item.produto.nome}</span>
+                    <span className="font-bold text-purple-700">
                       {formatarPreco(calcularSubtotal(item.produto.preco, item.quantidade))}
                     </span>
                   </div>
                 ))}
               </div>
-              <div className="mt-3 pt-2 border-t border-purple-200 flex justify-between font-bold text-purple-900">
-                <span>Total:</span>
-                <span>{formatarPreco(produtosSelecionados.reduce((total: number, item) => {
+              <div className="mt-4 pt-3 border-t border-purple-200 flex justify-between font-bold text-purple-900">
+                <span className="text-lg">Total:</span>
+                <span className="text-lg">{formatarPreco(produtosSelecionados.reduce((total: number, item) => {
                   // Usar a função precoParaNumero para garantir que o preço seja convertido corretamente
                   const precoNumerico = precoParaNumero(item.produto.preco);
                   return total + (precoNumerico * item.quantidade);
@@ -1519,43 +1672,55 @@ const PaginaInicial = () => {
               </div>
             </div>
             
-            <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4">
-              <div className="flex">
-                <div className="flex-shrink-0">
-                  <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                  </svg>
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+              <div className="flex items-start gap-3">
+                <div className="flex-shrink-0 bg-yellow-100 p-2 rounded-full">
+                  <AlertTriangle className="h-5 w-5 text-yellow-600" />
                 </div>
-                <div className="ml-3">
-                  <h3 className="text-sm font-medium text-yellow-800">Atenção!</h3>
-                  <div className="mt-2 text-sm text-yellow-700">
+                <div>
+                  <h3 className="text-sm font-semibold text-yellow-800">Atenção!</h3>
+                  <div className="mt-2 text-sm text-yellow-700 space-y-2">
                     <p>Sua reserva será válida por <strong>48 horas</strong>. Após este período, os produtos serão liberados para venda.</p>
-                    <p className="mt-2">Para retirar seus produtos, procure por <strong>Danilo Cardoso</strong> ou <strong>Tatiane Cardoso</strong> do Ministério De Casais com o comprovante de pagamento.</p>
-                    <p className="mt-2">Envie o comprovante para o número: <strong>(19) 99165-9221</strong></p>
+                    <p>Para retirar seus produtos, procure por <strong>Danilo Cardoso</strong> ou <strong>Tatiane Cardoso</strong> do Ministério De Casais com o comprovante de pagamento.</p>
+                    <p>Envie o comprovante para o número: <strong>(19) 99165-9221</strong></p>
                   </div>
                 </div>
               </div>
             </div>
             
-            <p className="text-sm text-gray-600">Ao confirmar, você concorda com os termos da reserva e confirma que os dados informados estão corretos.</p>
+            <div className="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg border border-gray-100">
+              <p>Ao confirmar, você concorda com os termos da reserva e confirma que os dados informados estão corretos.</p>
+            </div>
           </div>
           
-          <DialogFooter className="flex flex-col sm:flex-row gap-3">
-            <Button variant="outline" onClick={() => setMostrarConfirmacao(false)}>Cancelar</Button>
-            <Button 
-              onClick={processarReserva} 
-              className="bg-green-600 hover:bg-green-700 text-white"
-              disabled={enviandoReserva}
-            >
-              {enviandoReserva ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Processando...
-                </>
-              ) : (
-                <>Sim, confirmar reserva</>
-              )}
-            </Button>
+          <DialogFooter className="px-6 py-4 bg-gray-50 border-t border-gray-100">
+            <div className="flex flex-col-reverse sm:flex-row justify-between sm:justify-end gap-3 w-full max-w-[90%] mx-auto">
+              <Button
+                variant="outline"
+                onClick={() => setMostrarConfirmacao(false)}
+                className="w-full sm:w-auto border-gray-300 hover:bg-gray-100 transition-colors duration-200 px-5 py-2"
+              >
+                <X className="mr-2 h-4 w-4" />
+                Cancelar
+              </Button>
+              <Button
+                onClick={processarReserva} 
+                disabled={enviandoReserva}
+                className="w-full sm:w-auto bg-purple-600 text-white hover:bg-purple-700 shadow-sm hover:shadow-md transition-all duration-200 disabled:shadow-none px-5 py-2"
+              >
+                {enviandoReserva ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Processando...
+                  </>
+                ) : (
+                  <>
+                    <Check className="mr-2 h-4 w-4" />
+                    Confirmar Reserva
+                  </>
+                )}
+              </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -1579,18 +1744,21 @@ const PaginaInicial = () => {
               />
             </div>
           </div>
-          <DialogFooter className="flex flex-col sm:flex-row sm:justify-between border-t pt-3">
-            <div className="flex items-center text-sm text-purple-600 mb-3 sm:mb-0">
-              <Calendar className="h-4 w-4 mr-1" />
-              <span>Maio de 2025</span>
+          <DialogFooter className="px-8 py-6 bg-gray-50 border-t border-gray-100">
+            <div className="flex flex-col-reverse sm:flex-row justify-between w-full max-w-[95%] mx-auto gap-4 items-center">
+              <div className="flex items-center text-sm text-purple-600 bg-purple-50 px-4 py-2 rounded-full">
+                <Calendar className="h-4 w-4 mr-2" />
+                <span>Maio de 2025</span>
+              </div>
+              <Button 
+                type="button" 
+                className="w-full sm:w-auto bg-purple-600 hover:bg-purple-700 text-white shadow-sm hover:shadow-md transition-all duration-200 px-6 py-2.5" 
+                onClick={() => setMostrarQRCode(false)}
+              >
+                <Check className="mr-2 h-4 w-4" />
+                Fechar
+              </Button>
             </div>
-            <Button 
-              type="button" 
-              className="bg-purple-600 hover:bg-purple-700 text-white" 
-              onClick={() => setMostrarQRCode(false)}
-            >
-              Fechar
-            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -1616,17 +1784,26 @@ const PaginaInicial = () => {
               title="Mapa da localização"
             ></iframe>
           </div>
-          <DialogFooter className="flex justify-between">
-            <Button 
-              type="button" 
-              variant="outline" 
-              onClick={() => window.open('https://maps.google.com/?q=Av.+Thereza+Ana+Cecon+Breda,+2065+-+Jardim+das+Colinas,+Hortol%C3%A2ndia+-+SP,+13183-255', '_blank')}
-            >
-              Abrir no Google Maps
-            </Button>
-            <Button type="button" variant="secondary" onClick={() => setMostrarMapa(false)}>
-              Fechar
-            </Button>
+          <DialogFooter className="px-8 py-6 bg-gray-50 border-t border-gray-100">
+            <div className="flex flex-col-reverse sm:flex-row justify-between w-full max-w-[95%] mx-auto gap-4">
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={() => window.open('https://maps.google.com/?q=Av.+Thereza+Ana+Cecon+Breda,+2065+-+Jardim+das+Colinas,+Hortol%C3%A2ndia+-+SP,+13183-255', '_blank')}
+                className="w-full sm:w-auto border-gray-300 hover:bg-gray-100 transition-colors duration-200 px-6 py-2.5"
+              >
+                <MapPin className="mr-2 h-4 w-4" />
+                Abrir no Google Maps
+              </Button>
+              <Button 
+                type="button" 
+                onClick={() => setMostrarMapa(false)}
+                className="w-full sm:w-auto bg-purple-600 text-white hover:bg-purple-700 shadow-sm hover:shadow-md transition-all duration-200 px-6 py-2.5"
+              >
+                <Check className="mr-2 h-4 w-4" />
+                Fechar
+              </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -1906,10 +2083,167 @@ const PaginaInicial = () => {
               Para mais informações, procure Danilo Cardoso ou Tatiane Cardoso da Geração Israel.
             </div>
           </div>
-          <DialogFooter className="flex justify-center">
-            <Button onClick={() => setShowConsulteValoresDialog(false)}>
-              Entendi
-            </Button>
+          <DialogFooter className="px-8 py-6 bg-gray-50 border-t border-gray-100">
+            <div className="flex justify-center w-full max-w-[95%] mx-auto">
+              <Button 
+                onClick={() => setShowConsulteValoresDialog(false)}
+                className="px-8 py-2.5 bg-purple-600 text-white hover:bg-purple-700 shadow-sm hover:shadow-md transition-all duration-200"
+              >
+                <Check className="mr-2 h-4 w-4" /> Entendi
+              </Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Diálogo para selecionar produtos adicionais */}
+      <Dialog open={mostrarSelecionarProdutos} onOpenChange={setMostrarSelecionarProdutos}>
+        <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-hidden flex flex-col p-0">
+          <DialogHeader className="px-6 pt-6 pb-4 border-b border-gray-100">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="bg-purple-100 p-2 rounded-lg">
+                <ShoppingBag className="h-5 w-5 text-purple-600" />
+              </div>
+              <div>
+                <DialogTitle className="text-xl">Adicionar Produtos</DialogTitle>
+                <DialogDescription className="text-sm text-purple-600">
+                  Selecione os produtos que deseja adicionar à sua reserva
+                </DialogDescription>
+              </div>
+            </div>
+
+            {/* Barra de busca e filtros */}
+            <div className="mt-4 flex flex-col sm:flex-row gap-3">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input
+                  placeholder="Buscar produtos..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10 border-gray-200 hover:border-purple-300 focus:border-purple-500 transition-colors duration-200"
+                />
+              </div>
+              
+              <Select
+                value={categoriaAtiva}
+                onValueChange={setCategoriaAtiva}
+              >
+                <SelectTrigger className="w-full sm:w-[180px] border-gray-200 hover:border-purple-300 focus:border-purple-500 transition-colors duration-200">
+                  <SelectValue placeholder="Categoria" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todas">Todas as categorias</SelectItem>
+                  {categorias.map((categoria) => (
+                    <SelectItem key={categoria} value={categoria}>{categoria}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </DialogHeader>
+
+          <div className="flex-grow overflow-y-auto p-6">
+            {/* Lista de produtos */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {produtos
+                .filter(produto => {
+                  // Filtrar por categoria se não for "todas"
+                  const matchCategoria = categoriaAtiva === "todas" || produto.categoria === categoriaAtiva;
+                  
+                  // Filtrar por termo de busca
+                  const matchBusca = produto.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                    (produto.descricao && produto.descricao.toLowerCase().includes(searchTerm.toLowerCase()));
+                  
+                  // Filtrar produtos já selecionados
+                  const naoSelecionado = !produtosSelecionados.some(item => item.produto.id === produto.id);
+                  
+                  return matchCategoria && matchBusca && naoSelecionado && produto.estoque > 0;
+                })
+                .map((produto) => (
+                  <div 
+                    key={produto.id} 
+                    className="bg-white rounded-xl border border-gray-200 hover:border-purple-300 hover:shadow-md transition-all duration-200 overflow-hidden flex flex-col"
+                  >
+                    <div className="aspect-square w-full bg-gray-50 relative overflow-hidden">
+                      <img 
+                        src={extrairUrlImagem(produto.descricao) || "/Image/produto_sem_imagem.png"} 
+                        alt={produto.nome}
+                        className="w-full h-full object-contain p-2"
+                        onError={(e) => {
+                          e.currentTarget.src = "/Image/produto_sem_imagem.png";
+                        }}
+                      />
+                      {produto.estoque > 0 && (
+                        <div className="absolute top-2 right-2 bg-green-100 text-green-800 text-xs font-medium px-2 py-1 rounded-full">
+                          {produto.estoque} disponíveis
+                        </div>
+                      )}
+                    </div>
+                    
+                    <div className="p-4 flex flex-col flex-grow">
+                      <h3 className="font-medium text-gray-900 mb-1 line-clamp-2">{produto.nome}</h3>
+                      <p className="text-purple-600 font-bold mb-4">{formatarPreco(produto.preco)}</p>
+                      
+                      <div className="mt-auto">
+                        <Button 
+                          className="w-full bg-purple-600 hover:bg-purple-700 text-white"
+                          onClick={() => {
+                            adicionarProduto(produto);
+                            toast({
+                              title: "Produto adicionado",
+                              description: `${produto.nome} foi adicionado à sua reserva.`,
+                            });
+                          }}
+                        >
+                          <Plus className="mr-2 h-4 w-4" /> Adicionar
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+            </div>
+            
+            {produtos.filter(produto => {
+              const matchCategoria = categoriaAtiva === "todas" || produto.categoria === categoriaAtiva;
+              const matchBusca = produto.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                (produto.descricao && produto.descricao.toLowerCase().includes(searchTerm.toLowerCase()));
+              const naoSelecionado = !produtosSelecionados.some(item => item.produto.id === produto.id);
+              return matchCategoria && matchBusca && naoSelecionado && produto.estoque > 0;
+            }).length === 0 && (
+              <div className="text-center py-12">
+                <div className="mx-auto w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-4">
+                  <Package className="h-8 w-8 text-gray-400" />
+                </div>
+                <h3 className="text-lg font-medium mb-2">Nenhum produto encontrado</h3>
+                <p className="text-gray-500 max-w-md mx-auto">
+                  Não encontramos produtos disponíveis com os filtros atuais. Tente ajustar sua busca ou categoria.
+                </p>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="px-8 py-6 bg-gray-50 border-t border-gray-200">
+            <div className="flex flex-col-reverse sm:flex-row justify-between sm:justify-end gap-4 w-full max-w-[95%] mx-auto">
+              <Button
+                variant="outline"
+                onClick={() => setMostrarSelecionarProdutos(false)}
+                className="w-full sm:w-auto px-6 py-2.5 border-gray-300 hover:bg-gray-100"
+              >
+                <ArrowRight className="mr-2 h-4 w-4 rotate-180" />
+                Voltar para o carrinho
+              </Button>
+              <Button
+                onClick={() => {
+                  setMostrarSelecionarProdutos(false);
+                  toast({
+                    title: "Produtos adicionados",
+                    description: "Os produtos selecionados foram adicionados à sua reserva.",
+                  });
+                }}
+                className="w-full sm:w-auto bg-purple-600 text-white hover:bg-purple-700 px-6 py-2.5 shadow-sm hover:shadow-md transition-all duration-200"
+              >
+                <Check className="mr-2 h-4 w-4" /> Concluir seleção
+              </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>

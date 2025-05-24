@@ -49,6 +49,7 @@ const Produtos = () => {
   const [loading, setLoading] = useState(true);
   const [loadingAction, setLoadingAction] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [categoriaFiltro, setCategoriaFiltro] = useState<string>("todos");
   const [showDialog, setShowDialog] = useState(false);
   const [currentProduto, setCurrentProduto] = useState<Partial<Produto>>({});
   const [isEditing, setIsEditing] = useState(false);
@@ -56,10 +57,17 @@ const Produtos = () => {
   const [imagemPreview, setImagemPreview] = useState<string>("");
   const { toast } = useToast();
 
-  const filteredProdutos = produtos.filter(produto => 
-    produto.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    produto.categoria.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredProdutos = produtos.filter(produto => {
+    // Filtro por texto de busca
+    const matchesSearch = 
+      produto.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      produto.categoria.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    // Filtro por categoria
+    const matchesCategoria = categoriaFiltro === "todos" || produto.categoria === categoriaFiltro;
+    
+    return matchesSearch && matchesCategoria;
+  });
 
   // Função para extrair a URL da imagem da descrição
   const extrairUrlImagem = (descricao?: string): string => {
@@ -275,14 +283,32 @@ const Produtos = () => {
       <Card>
         <CardHeader className="pb-3">
           <CardTitle>Lista de Produtos</CardTitle>
-          <div className="relative mt-2">
-            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar produtos..."
-              className="pl-8"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
+          <div className="flex flex-col sm:flex-row gap-2 mt-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar produtos..."
+                className="pl-8"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+            <div className="w-full sm:w-64">
+              <Select
+                value={categoriaFiltro}
+                onValueChange={setCategoriaFiltro}
+              >
+                <SelectTrigger className="h-10">
+                  <SelectValue placeholder="Filtrar por categoria" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todas as categorias</SelectItem>
+                  {CATEGORIAS.map((categoria) => (
+                    <SelectItem key={categoria} value={categoria}>{categoria}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
