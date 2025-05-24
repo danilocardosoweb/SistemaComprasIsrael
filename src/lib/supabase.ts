@@ -112,6 +112,7 @@ export type Venda = {
   geracao?: string;
   observacoes?: string;
   tipo?: 'venda' | 'reserva';
+  retira_produto?: 'Reserva' | 'Entregue';
 };
 
 export type ItemVenda = {

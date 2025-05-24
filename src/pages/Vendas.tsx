@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
-import { Plus, Search, MoreHorizontal, Eye, Loader2, FileDown, Trash2, Edit, Save, X, MinusCircle, Download, ExternalLink, FileX } from "lucide-react";
+import { Plus, Search, MoreHorizontal, Eye, Loader2, FileDown, Trash2, Edit, Save, X, MinusCircle, Download, ExternalLink, FileX, User, Calendar, CreditCard, Banknote, AlertCircle, CheckCircle, Package, MessageSquare, ShoppingBag } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { api, Venda as SupabaseVenda, ItemVenda, StatusPagamento, StatusVenda, Produto, supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
@@ -42,6 +42,8 @@ type VendaExibicao = {
   status_pagamento: StatusPagamento;
   geracao?: string;
   comprovante_url?: string | null;
+  retira_produto?: 'Reserva' | 'Entregue';
+  observacoes?: string;
 };
 
 const Vendas = () => {
@@ -570,6 +572,54 @@ const Vendas = () => {
     }
   };
 
+  // Função para atualizar o status de retirada do produto
+  const handleRetiraProdutoChange = async (novoStatus: 'Reserva' | 'Entregue') => {
+    if (!selectedVenda) return;
+    
+    try {
+      // Atualizar o estado local primeiro para feedback imediato
+      setSelectedVenda({
+        ...selectedVenda,
+        retira_produto: novoStatus
+      });
+      
+      // Atualizar no banco de dados
+      const { error } = await supabase
+        .from('vendas')
+        .update({ retira_produto: novoStatus })
+        .eq('id', selectedVenda.id);
+      
+      if (error) throw error;
+      
+      // Atualizar a lista de vendas
+      setVendas(vendas.map(venda => 
+        venda.id === selectedVenda.id 
+          ? { ...venda, retira_produto: novoStatus } 
+          : venda
+      ));
+      
+      toast({
+        title: "Status de retirada atualizado",
+        description: `O status de retirada foi alterado para "${novoStatus}".`,
+      });
+    } catch (error: any) {
+      console.error("Erro ao atualizar status de retirada:", error);
+      toast({
+        title: "Erro ao atualizar status de retirada",
+        description: error.message || "Ocorreu um erro ao atualizar o status de retirada.",
+        variant: "destructive",
+      });
+      
+      // Reverter alteração local em caso de erro
+      if (selectedVenda) {
+        setSelectedVenda({
+          ...selectedVenda,
+          retira_produto: selectedVenda.retira_produto
+        });
+      }
+    }
+  };
+  
   // Função para lidar com a exclusão de uma venda
   const handleExcluirVenda = async () => {
     if (!vendaParaExcluir) return;
@@ -1094,38 +1144,62 @@ const Vendas = () => {
 
       {/* Dialog for viewing sale details */}
       <Dialog open={showDetails} onOpenChange={setShowDetails}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Detalhes da Venda #{selectedVenda?.id}</DialogTitle>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+          <DialogHeader className="pb-2 border-b">
+            <div className="flex justify-between items-center">
+              <DialogTitle className="flex items-center gap-2 text-xl">
+                <Eye className="h-5 w-5 text-primary" />
+                Detalhes da Venda #{selectedVenda?.id}
+              </DialogTitle>
+              <Button variant="ghost" size="icon" onClick={() => setShowDetails(false)} className="rounded-full hover:bg-muted">
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
           </DialogHeader>
           
-          <div className="space-y-6">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <p className="text-sm text-muted-foreground">Cliente</p>
-                <p className="font-medium">{selectedVenda?.cliente}</p>
+          <div className="space-y-6 overflow-y-auto pr-2 my-2 pb-4" style={{ maxHeight: 'calc(90vh - 180px)' }}>
+            {/* Seção de informações principais */}
+            {/* Informações do cliente e da venda */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-muted/30 p-4 rounded-lg border border-muted-foreground/20">
+              <div className="md:col-span-2 flex flex-col gap-1">
+                <div className="flex items-center gap-2">
+                  <User className="h-5 w-5 text-primary" />
+                  <p className="text-sm font-medium text-primary">Informações do Cliente</p>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-1 bg-white p-3 rounded-md shadow-sm">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Nome</p>
+                    <p className="font-medium">{selectedVenda?.cliente}</p>
+                  </div>
+                  {selectedVenda?.geracao && (
+                    <div>
+                      <p className="text-xs text-muted-foreground">Geração</p>
+                      <p className="font-medium">{selectedVenda.geracao}</p>
+                    </div>
+                  )}
+                </div>
               </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Data</p>
-                <p className="font-medium">{selectedVenda?.data}</p>
+              
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-5 w-5 text-primary" />
+                  <p className="text-sm font-medium text-primary">Data da Venda</p>
+                </div>
+                <div className="bg-white p-3 rounded-md shadow-sm mt-1">
+                  <p className="font-medium">{selectedVenda?.data}</p>
+                </div>
               </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Status</p>
-                <Badge className={`${selectedVenda && getStatusColor(selectedVenda.status)} mt-1`}>
-                  {selectedVenda?.status}
-                </Badge>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Total</p>
-                <p className="font-medium">R$ {selectedVenda?.total.toFixed(2)}</p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Forma de Pagamento</p>
+              
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center gap-2">
+                  <CreditCard className="h-5 w-5 text-primary" />
+                  <p className="text-sm font-medium text-primary">Forma de Pagamento</p>
+                </div>
                 <Select
                   value={selectedVenda?.forma_pagamento || ''}
                   onValueChange={(value: string) => handleFormaPagamentoChange(value)}
                 >
-                  <SelectTrigger className="w-[180px]">
+                  <SelectTrigger className="w-full bg-white shadow-sm">
                     <SelectValue placeholder="Forma de Pagamento" />
                   </SelectTrigger>
                   <SelectContent>
@@ -1135,13 +1209,39 @@ const Vendas = () => {
                   </SelectContent>
                 </Select>
               </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Status do Pagamento</p>
+              
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center gap-2">
+                  <Banknote className="h-5 w-5 text-primary" />
+                  <p className="text-sm font-medium text-primary">Total</p>
+                </div>
+                <div className="bg-white p-3 rounded-md shadow-sm mt-1">
+                  <p className="font-medium text-lg">R$ {selectedVenda?.total.toFixed(2)}</p>
+                </div>
+              </div>
+              
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="h-5 w-5 text-primary" />
+                  <p className="text-sm font-medium text-primary">Status da Venda</p>
+                </div>
+                <div className="bg-white p-3 rounded-md shadow-sm mt-1 flex items-center">
+                  <Badge className={`${selectedVenda && getStatusColor(selectedVenda.status)}`}>
+                    {selectedVenda?.status}
+                  </Badge>
+                </div>
+              </div>
+              
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center gap-2">
+                  <CheckCircle className="h-5 w-5 text-primary" />
+                  <p className="text-sm font-medium text-primary">Status do Pagamento</p>
+                </div>
                 <Select
                   value={selectedVenda?.status_pagamento}
                   onValueChange={(value: StatusPagamento) => handleStatusPagamentoChange(value)}
                 >
-                  <SelectTrigger className="w-[180px]">
+                  <SelectTrigger className="w-full bg-white shadow-sm">
                     <SelectValue placeholder="Status do Pagamento" />
                   </SelectTrigger>
                   <SelectContent>
@@ -1153,74 +1253,63 @@ const Vendas = () => {
                 </Select>
               </div>
               
-              {/* Comprovante de Pagamento */}
-              <div className="col-span-2 mt-2">
-                <p className="text-sm text-muted-foreground mb-1">Comprovante de Pagamento</p>
-                {selectedVenda?.comprovante_url ? (
-                  <div className="border rounded-md p-3 bg-gray-50">
-                    <div className="flex flex-col sm:flex-row items-center gap-3">
-                      <div className="relative group cursor-pointer">
-                        <img 
-                          src={selectedVenda.comprovante_url} 
-                          alt="Comprovante de Pagamento" 
-                          className="h-40 object-contain rounded-md border border-gray-200 hover:border-primary transition-all"
-                        />
-                        <div className="absolute inset-0 bg-black/5 group-hover:bg-black/10 rounded-md transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
-                          <Search className="h-6 w-6 text-gray-700" />
-                        </div>
-                      </div>
-                      <div className="flex flex-col gap-2 items-center sm:items-start">
-                        <p className="text-sm">Comprovante anexado em: {selectedVenda.data}</p>
-                        <div className="flex gap-2">
-                          <a 
-                            href={selectedVenda.comprovante_url} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-1 text-sm bg-primary text-white px-3 py-1.5 rounded-md hover:bg-primary/90 transition-colors"
-                          >
-                            <ExternalLink className="h-4 w-4" />
-                            Abrir em nova aba
-                          </a>
-                          <a 
-                            href={selectedVenda.comprovante_url} 
-                            download
-                            className="flex items-center gap-1 text-sm bg-secondary text-secondary-foreground px-3 py-1.5 rounded-md hover:bg-secondary/90 transition-colors"
-                          >
-                            <Download className="h-4 w-4" />
-                            Baixar
-                          </a>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center gap-2">
+                  <Package className="h-5 w-5 text-primary" />
+                  <p className="text-sm font-medium text-primary">Status de Entrega</p>
+                </div>
+                <Select
+                  value={selectedVenda?.retira_produto || 'Reserva'}
+                  onValueChange={(value: 'Reserva' | 'Entregue') => handleRetiraProdutoChange(value)}
+                >
+                  <SelectTrigger className="w-full bg-white shadow-sm">
+                    <SelectValue placeholder="Status de Entrega" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Reserva">Reserva</SelectItem>
+                    <SelectItem value="Entregue">Entregue</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+            </div>
+            
+            {/* Seção de Observações */}
+            <div className="mt-6 bg-muted/30 p-4 rounded-lg border border-muted-foreground/20">
+              <div className="flex items-center gap-2 mb-3">
+                <MessageSquare className="h-5 w-5 text-primary" />
+                <p className="text-sm font-medium text-primary">Observações do Cliente</p>
+              </div>
+              <div className="border rounded-md p-4 bg-white shadow-sm">
+                {selectedVenda?.observacoes ? (
+                  <p className="text-sm">{selectedVenda.observacoes}</p>
                 ) : (
-                  <div className="border border-dashed rounded-md p-4 bg-muted/50 flex flex-col items-center justify-center text-center">
-                    <FileX className="h-8 w-8 text-muted-foreground mb-2" />
-                    <p className="text-muted-foreground">Nenhum comprovante de pagamento anexado</p>
-                    {selectedVenda?.status_pagamento === 'Pendente' && (
-                      <p className="text-xs text-muted-foreground mt-1">O cliente ainda não enviou o comprovante de pagamento</p>
-                    )}
-                  </div>
+                  <p className="text-sm text-muted-foreground italic">Nenhuma observação registrada</p>
                 )}
               </div>
             </div>
             
-            <div>
-              <p className="text-sm font-medium mb-2">Itens vendidos</p>
+            {/* Seção de Itens Vendidos */}
+            <div className="mt-6 bg-muted/30 p-4 rounded-lg border border-muted-foreground/20">
+              <div className="flex items-center gap-2 mb-3">
+                <ShoppingBag className="h-5 w-5 text-primary" />
+                <p className="text-sm font-medium text-primary">Itens da Venda</p>
+              </div>
+              
               {loadingDetalhes ? (
-                <div className="bg-accent/30 p-4 rounded-md text-center">
-                  <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
+                <div className="bg-white p-8 rounded-md text-center shadow-sm">
+                  <Loader2 className="h-8 w-8 animate-spin mx-auto mb-3 text-primary" />
                   <p className="text-muted-foreground">Carregando itens da venda...</p>
                 </div>
               ) : itensVenda.length > 0 ? (
-                <div className="border rounded-md overflow-hidden">
+                <div className="border rounded-md overflow-hidden bg-white shadow-sm">
                   <Table>
                     <TableHeader>
-                      <TableRow>
-                        <TableHead>Produto</TableHead>
-                        <TableHead className="text-right">Qtd</TableHead>
-                        <TableHead className="text-right">Preço Unit.</TableHead>
-                        <TableHead className="text-right">Subtotal</TableHead>
+                      <TableRow className="bg-muted/50">
+                        <TableHead className="font-semibold">Produto</TableHead>
+                        <TableHead className="text-right font-semibold">Qtd</TableHead>
+                        <TableHead className="text-right font-semibold">Preço Unit.</TableHead>
+                        <TableHead className="text-right font-semibold">Subtotal</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -1229,25 +1318,97 @@ const Vendas = () => {
                         const subtotalCalculado = calcularSubtotal(item.preco_unitario, item.quantidade);
                         
                         return (
-                          <TableRow key={item.id}>
-                            <TableCell>{item.produto_nome}</TableCell>
+                          <TableRow key={item.id} className="hover:bg-muted/30">
+                            <TableCell className="font-medium">{item.produto_nome}</TableCell>
                             <TableCell className="text-right">{item.quantidade}</TableCell>
                             <TableCell className="text-right">{formatarPreco(item.preco_unitario)}</TableCell>
-                            <TableCell className="text-right">{formatarPreco(subtotalCalculado)}</TableCell>
+                            <TableCell className="text-right font-medium">{formatarPreco(subtotalCalculado)}</TableCell>
                           </TableRow>
                         );
                       })}
+                      <TableRow className="bg-muted/20 border-t-2">
+                        <TableCell colSpan={3} className="text-right font-semibold">Total:</TableCell>
+                        <TableCell className="text-right font-bold text-primary">
+                          {formatarPreco(selectedVenda?.total || 0)}
+                        </TableCell>
+                      </TableRow>
                     </TableBody>
                   </Table>
                 </div>
               ) : (
-                <div className="bg-accent/30 p-4 rounded-md text-center">
+                <div className="bg-white p-8 rounded-md text-center shadow-sm">
+                  <ShoppingBag className="h-8 w-8 mx-auto mb-3 text-muted-foreground" />
                   <p className="text-muted-foreground">
                     Nenhum item encontrado para esta venda.
                   </p>
                 </div>
               )}
             </div>
+            
+            {/* Seção de Comprovante de Pagamento */}
+            <div className="mt-6 bg-muted/30 p-4 rounded-lg border border-muted-foreground/20">
+              <div className="flex items-center gap-2 mb-3">
+                <FileDown className="h-5 w-5 text-primary" />
+                <p className="text-sm font-medium text-primary">Comprovante de Pagamento</p>
+              </div>
+              
+              {selectedVenda?.comprovante_url ? (
+                <div className="border rounded-md p-4 bg-white shadow-sm">
+                  <div className="flex flex-col md:flex-row items-center gap-6">
+                    <div className="relative group cursor-pointer">
+                      <img 
+                        src={selectedVenda.comprovante_url} 
+                        alt="Comprovante de Pagamento" 
+                        className="h-48 object-contain rounded-md border border-gray-200 hover:border-primary transition-all"
+                      />
+                      <div className="absolute inset-0 bg-black/5 group-hover:bg-black/10 rounded-md transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
+                        <Search className="h-6 w-6 text-gray-700" />
+                      </div>
+                    </div>
+                    <div className="flex flex-col gap-4 items-center md:items-start">
+                      <div>
+                        <p className="text-sm text-muted-foreground">Comprovante anexado em:</p>
+                        <p className="font-medium">{selectedVenda.data}</p>
+                      </div>
+                      <div className="flex gap-3">
+                        <a 
+                          href={selectedVenda.comprovante_url} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 text-sm bg-primary text-white px-4 py-2 rounded-md hover:bg-primary/90 transition-colors"
+                        >
+                          <ExternalLink className="h-4 w-4" />
+                          Abrir em nova aba
+                        </a>
+                        <a 
+                          href={selectedVenda.comprovante_url} 
+                          download
+                          className="flex items-center gap-2 text-sm bg-secondary text-secondary-foreground px-4 py-2 rounded-md hover:bg-secondary/90 transition-colors"
+                        >
+                          <Download className="h-4 w-4" />
+                          Baixar
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="border border-dashed rounded-md p-6 bg-white shadow-sm flex flex-col items-center justify-center text-center">
+                  <FileX className="h-10 w-10 text-muted-foreground mb-3" />
+                  <p className="text-muted-foreground font-medium">Nenhum comprovante de pagamento anexado</p>
+                  {selectedVenda?.status_pagamento === 'Pendente' && (
+                    <p className="text-sm text-muted-foreground mt-2">O cliente ainda não enviou o comprovante de pagamento</p>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+          
+          <div className="pt-4 border-t mt-2 flex justify-end">
+            <Button onClick={() => setShowDetails(false)} className="px-6">
+              <X className="mr-2 h-4 w-4" />
+              Fechar
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

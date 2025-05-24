@@ -1,5 +1,19 @@
 # Log de Alterações - Divino Vendas App
 
+[24/05/2025 12:28] - [pages/Vendas] - [Melhoria na interface de Detalhes da Venda com reorganização, barra de rolagem e melhor UX/UI] - [Danilo Cardoso]
+
+[24/05/2025 12:22] - [pages/Vendas, lib/supabase] - [Adição dos campos "Retira Produto" e "Observações" na tela de detalhes da venda] - [Danilo Cardoso]
+
+[23/05/2025 18:26] - [pages/PaginaInicial] - [Correção da importação do ícone AlertTriangle] - [Danilo Cardoso]
+
+[23/05/2025 18:15] - [pages/PaginaInicial] - [Correção do layout da tela de confirmação de reserva] - [Danilo Cardoso]
+
+[23/05/2025 18:08] - [pages/PaginaInicial] - [Melhoria no posicionamento dos botões nos diálogos] - [Danilo Cardoso]
+
+[23/05/2025 18:03] - [pages/PaginaInicial] - [Correção de erros de importação e redeclaração de variáveis] - [Danilo Cardoso]
+
+[23/05/2025 17:50] - [pages/PaginaInicial] - [Modernização da interface de reserva de produtos com destaque para seleção de múltiplos itens] - [Danilo Cardoso]
+
 [22/05/2025 17:12] - [src/styles, pages/PaginaInicial] - [Redução do tamanho do carrossel e desativação do QR Code] - [Danilo Cardoso]
 
 [22/05/2025 16:54] - [src/styles] - [Ajustes no carrossel 3D para melhor visualização e centralização] - [Danilo Cardoso]
